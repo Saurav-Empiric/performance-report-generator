@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, LogOut } from "lucide-react";
@@ -13,14 +13,20 @@ interface SidebarProps {
 }
 
 interface Employee {
-  id: string;
+  _id: string;
   name: string;
   role: string;
+  department?: string;
 }
 
 export function Sidebar({ employees, onSelectEmployee, onViewMyReviews }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>(employees);
+
+  // Update filtered employees when employees prop changes
+  useEffect(() => {
+    setFilteredEmployees(employees);
+  }, [employees]);
 
   const handleSearch = () => {
     const filtered = employees.filter((employee) =>
@@ -60,11 +66,16 @@ export function Sidebar({ employees, onSelectEmployee, onViewMyReviews }: Sideba
           {filteredEmployees.length > 0 ? (
             filteredEmployees.map((employee) => (
               <div
-                key={employee.id}
+                key={employee._id}
                 className="py-2 px-2 hover:bg-gray-100 cursor-pointer rounded"
                 onClick={() => onSelectEmployee(employee)}
               >
                 {employee.name}
+                {employee.department && (
+                  <span className="text-xs text-gray-500 block">
+                    {employee.department}
+                  </span>
+                )}
               </div>
             ))
           ) : (

@@ -1,18 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-interface FeedbackPoint {
-  id: string;
-  content: string;
-  timestamp: Date;
-  from: string;
-}
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { useCreateReview, useReviewsByEmployee } from "@/hooks";
+import { Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface EmployeeFeedbackProps {
   employeeId: string;
@@ -25,28 +19,50 @@ export function EmployeeFeedback({
   employeeName,
   employeeRole,
 }: EmployeeFeedbackProps) {
-  const [feedback, setFeedback] = useState<FeedbackPoint[]>([]);
   const [newPoint, setNewPoint] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmitPoint = () => {
-    if (!newPoint.trim()) return;
+  // Fetch reviews for this employee using TanStack Query
+  const {
+    data: employeeReviews = [],
+    isLoading,
+    isError
+  } = useReviewsByEmployee(employeeId);
 
-    const newPointItem: FeedbackPoint = {
-      id: Date.now().toString(),
+  // Create review mutation
+  const { mutate: submitReview, isPending: isSubmitting } = useCreateReview();
+
+  const handleSubmitPoint = () => {
+    if (!newPoint.trim() || isSubmitting) return;
+
+    // Create a new review
+    submitReview({
       content: newPoint,
       timestamp: new Date(),
-      from: "Current User",
-    };
+      targetEmployee: employeeId,
+      category: 'Performance' // Default category
+    });
 
-    setFeedback((prev) => [...prev, newPointItem]);
+    // Clear the input
     setNewPoint("");
   };
 
-  // Scroll to bottom when feedback changes
+  // Format date for display
+  const formatDate = (dateString: string | Date) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Scroll to bottom when reviews change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [feedback]);
+  }, [employeeReviews]);
 
   return (
     <div className="flex flex-col h-full w-full p-4">
@@ -62,38 +78,65 @@ export function EmployeeFeedback({
         </div>
       </div>
 
-      {/* Messages List */}
+      {/* Reviews List */}
       <Card className="flex-1 mb-4 p-4 border overflow-auto">
-        <h3 className="font-semibold mb-2 text-right">Points</h3>
-        <div className="flex flex-col-reverse space-y-3 space-y-reverse">
-          {feedback.map((point) => (
-            <div key={point.id} className="border rounded-lg p-3 bg-gray-50">
-              <p className="text-sm mb-1">{point.content}</p>
-              <p className="text-xs text-gray-500">
-                {point.timestamp.toLocaleString()}
+        <h3 className="font-semibold mb-2 text-right">Performance Reviews</h3>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-red-500" />
+          </div>
+        ) : isError ? (
+          <p className="text-red-500 text-center py-2">
+            Error loading reviews. Please try again.
+          </p>
+        ) : (
+          <div className="flex flex-col-reverse space-y-3 space-y-reverse">
+            {employeeReviews.map((review) => (
+              <div key={review._id} className="border rounded-lg p-3 bg-gray-50">
+                <p className="text-sm mb-1">{review.content}</p>
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-xs text-gray-500">
+                    {formatDate(review.timestamp)}
+                  </p>
+                  {review.category && (
+                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                      {review.category}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+            {employeeReviews.length === 0 && (
+              <p className="text-gray-500 text-center py-2">
+                No reviews have been added yet
               </p>
-            </div>
-          ))}
-          {feedback.length === 0 && (
-            <p className="text-gray-500 text-center py-2">
-              No points have been added yet
-            </p>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </Card>
 
       {/* Input Area */}
       <div className="border-t pt-4">
         <div className="flex items-center gap-2">
           <Textarea
-            placeholder="User will write and enters the performance points here..."
+            placeholder="Write a performance review..."
             value={newPoint}
             onChange={(e) => setNewPoint(e.target.value)}
             className="flex-1 min-h-[100px] resize-none"
+            disabled={isSubmitting}
           />
-          <Button size="icon" className="h-10 w-10 rounded-full" onClick={handleSubmitPoint}>
-            <Send className="h-5 w-5" />
+          <Button
+            size="icon"
+            className="h-10 w-10 rounded-full"
+            onClick={handleSubmitPoint}
+            disabled={isSubmitting || !newPoint.trim()}
+          >
+            {isSubmitting ? (
+              <div className="animate-spin h-4 w-4 border-t-2 border-b-2 border-white rounded-full" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
           </Button>
         </div>
       </div>

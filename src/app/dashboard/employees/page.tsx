@@ -6,27 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
-import { Trash2, Plus, Search, User, Mail, Building } from "lucide-react";
-
-// Mock data for employees
-const initialEmployees = [
-  { id: "1", name: "John Doe", email: "john.doe@company.com", role: "Software Engineer", department: "Engineering" },
-  { id: "2", name: "Jane Smith", email: "jane.smith@company.com", role: "Product Manager", department: "Product" },
-  { id: "3", name: "Michael Brown", email: "michael.brown@company.com", role: "UI/UX Designer", department: "Design" },
-  { id: "4", name: "Sarah Johnson", email: "sarah.johnson@company.com", role: "Data Analyst", department: "Engineering" },
-  { id: "5", name: "Robert Wilson", email: "robert.wilson@company.com", role: "Marketing Specialist", department: "Marketing" },
-];
-
-interface Employee {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string;
-}
+import { Trash2, Plus, Search, User, Mail, Building, Loader2 } from "lucide-react";
+import { useCreateEmployee, useDeleteEmployee, useEmployees } from "@/hooks";
+import { Employee } from "@/types";
+import { toast } from "sonner";
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const { 
+    data: employees = [], 
+    isLoading, 
+    error 
+  } = useEmployees();
+  
+  const { mutate: createEmployee, isPending: isCreating } = useCreateEmployee();
+  const { mutate: deleteEmployee, isPending: isDeleting } = useDeleteEmployee();
+  
   const [searchQuery, setSearchQuery] = useState("");
   
   // New employee form state
@@ -42,51 +36,57 @@ export default function EmployeesPage() {
     const searchLower = searchQuery.toLowerCase();
     return (
       employee.name.toLowerCase().includes(searchLower) ||
-      employee.email.toLowerCase().includes(searchLower) ||
+      (employee.email && employee.email.toLowerCase().includes(searchLower)) ||
       employee.role.toLowerCase().includes(searchLower) ||
-      employee.department.toLowerCase().includes(searchLower)
+      (employee.department && employee.department.toLowerCase().includes(searchLower))
     );
   });
   
   const handleAddEmployee = () => {
     // Basic validation
     if (!newEmployee.name || !newEmployee.email || !newEmployee.role || !newEmployee.department) {
-      alert("Please fill in all fields");
+      toast("Please fill in all fields");
       return;
     }
     
     // Check for email format
     if (!isValidEmail(newEmployee.email)) {
-      alert("Please enter a valid email address");
+      toast("Please enter a valid email address");
       return;
     }
     
-    // Check for duplicate email
-    if (employees.some(emp => emp.email === newEmployee.email)) {
-      alert("An employee with this email already exists");
-      return;
-    }
-    
-    // Add new employee
-    const employee: Employee = {
-      id: Date.now().toString(),
-      ...newEmployee
-    };
-    
-    setEmployees([...employees, employee]);
-    
-    // Reset form
-    setNewEmployee({
-      name: "",
-      email: "",
-      role: "",
-      department: "",
+    // Add new employee via mutation
+    createEmployee({
+      name: newEmployee.name,
+      email: newEmployee.email,
+      role: newEmployee.role,
+      department: newEmployee.department
+    }, {
+      onSuccess: () => {
+        // Reset form
+        setNewEmployee({
+          name: "",
+          email: "",
+          role: "",
+          department: "",
+        });
+      },
+      onError: (error) => {
+        toast(`Failed to add employee: ${error.message}`);
+      }
     });
   };
   
   const handleRemoveEmployee = (id: string) => {
     if (confirm("Are you sure you want to remove this employee?")) {
-      setEmployees(employees.filter(emp => emp.id !== id));
+      deleteEmployee(id, {
+        onSuccess: () => {
+          toast("Employee deleted successfully");
+        },
+        onError: (error) => {
+          toast.error(`Failed to delete employee: ${error.message}`);
+        }
+      });
     }
   };
   
@@ -95,11 +95,31 @@ export default function EmployeesPage() {
     return emailRegex.test(email);
   };
   
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[80vh]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Error Loading Data</h2>
+          <p className="text-gray-600">There was a problem fetching the employee data.</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Manage Employees</h1>
-        <div className="text-sm text-gray-500">Total: {employees.length} employees</div>
+        <div className="text-sm text-gray-500">
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading...
+            </span>
+          ) : (
+            `Total: ${employees.length} employees`
+          )}
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -120,6 +140,7 @@ export default function EmployeesPage() {
                   className="pl-8"
                   value={newEmployee.name}
                   onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                  disabled={isCreating}
                 />
               </div>
             </div>
@@ -135,6 +156,7 @@ export default function EmployeesPage() {
                   className="pl-8"
                   value={newEmployee.email}
                   onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                  disabled={isCreating}
                 />
               </div>
             </div>
@@ -146,6 +168,7 @@ export default function EmployeesPage() {
                 placeholder="Software Engineer" 
                 value={newEmployee.role}
                 onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+                disabled={isCreating}
               />
             </div>
             
@@ -159,14 +182,28 @@ export default function EmployeesPage() {
                   className="pl-8"
                   value={newEmployee.department}
                   onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+                  disabled={isCreating}
                 />
               </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleAddEmployee} className="w-full gap-2">
-              <Plus className="h-4 w-4" />
-              Add Employee
+            <Button 
+              onClick={handleAddEmployee} 
+              className="w-full gap-2"
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Add Employee
+                </>
+              )}
             </Button>
           </CardFooter>
         </Card>
@@ -182,51 +219,68 @@ export default function EmployeesPage() {
                 className="pl-8"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={isLoading}
               />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4 max-h-[500px] overflow-y-auto">
-              {filteredEmployees.length > 0 ? (
-                filteredEmployees.map((employee) => (
-                  <div 
-                    key={employee.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage src={`https://avatar.vercel.sh/${employee.id}`} />
-                        <AvatarFallback>{employee.name[0]}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{employee.name}</p>
-                        <p className="text-sm text-gray-500">{employee.email}</p>
-                        <div className="flex gap-2 mt-1">
-                          <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                            {employee.role}
-                          </span>
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                            {employee.department}
-                          </span>
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-gray-500">Loading employees...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                {filteredEmployees.length > 0 ? (
+                  filteredEmployees.map((employee) => (
+                    <div 
+                      key={employee._id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={`https://avatar.vercel.sh/${employee._id}`} />
+                          <AvatarFallback>{employee.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{employee.name}</p>
+                          <p className="text-sm text-gray-500">{employee.email}</p>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                              {employee.role}
+                            </span>
+                            {employee.department && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                {employee.department}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleRemoveEmployee(employee._id)}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleRemoveEmployee(employee.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  ))
+                ) : (
+                  <div className="text-center py-8 border rounded-lg bg-gray-50">
+                    <p className="text-gray-500">No employees found</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8 border rounded-lg bg-gray-50">
-                  <p className="text-gray-500">No employees found</p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
