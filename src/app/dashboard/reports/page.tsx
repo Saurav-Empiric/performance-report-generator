@@ -17,22 +17,22 @@ import { Employee } from "@/types";
 const getMonthOptions = () => {
   const options = [];
   const currentDate = new Date();
-  
+
   for (let i = 0; i < 12; i++) {
     const date = new Date(currentDate);
     date.setMonth(currentDate.getMonth() - i);
-    
+
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const formatted = `${year}-${month}`;
-    
-    const monthNames = ["January", "February", "March", "April", "May", "June", 
-                        "July", "August", "September", "October", "November", "December"];
+
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
     const label = `${monthNames[date.getMonth()]} ${year}`;
-    
+
     options.push({ value: formatted, label });
   }
-  
+
   return options;
 };
 
@@ -40,29 +40,29 @@ const monthOptions = getMonthOptions();
 
 export default function ReportsPage() {
   const { data: employees = [], isLoading: employeesLoading } = useEmployees();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
-  
+
   // State for selected employee
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  
+
   // Fetch reports for the selected employee
-  const { 
-    data: employeeReports = [], 
-    isLoading: reportsLoading 
+  const {
+    data: employeeReports = [],
+    isLoading: reportsLoading
   } = useEmployeeReports(
     selectedEmployee?._id || '',
-    { 
-      enabled: !!selectedEmployee 
+    {
+      enabled: !!selectedEmployee
     }
   );
-  
+
   // Generate report mutation
-  const { 
-    mutate: generateReport, 
-    isPending: isGenerating 
+  const {
+    mutate: generateReport,
+    isPending: isGenerating
   } = useGenerateReport({
     onSuccess: () => {
       toast.success(`Report generated for ${selectedEmployee?.name}`);
@@ -71,32 +71,32 @@ export default function ReportsPage() {
       toast.error(error.message);
     }
   });
-  
+
   // Handle generate report
   const handleGenerateReport = () => {
     if (!selectedEmployee) {
       toast.error("Please select an employee");
       return;
     }
-    
+
     generateReport({
       employeeId: selectedEmployee._id,
       month: selectedMonth
     });
   };
-  
+
   // Find the report for the selected month
   const selectedMonthReport = employeeReports.find(report => report.month === selectedMonth);
-  
+
   // Filter employees based on search query and department
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.role.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = departmentFilter === "all" || 
+    const matchesDepartment = departmentFilter === "all" ||
       (employee.department === departmentFilter);
     return matchesSearch && matchesDepartment;
   });
-  
+
   // Get unique departments for filtering
   const departments = [...new Set(employees
     .filter(e => e.department)
@@ -106,25 +106,6 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-3xl font-bold">Employee Performance Reports</h1>
-
-        <Button 
-          variant="outline" 
-          className="flex items-center gap-2 self-end"
-          disabled={!selectedEmployee || !selectedMonth || isGenerating}
-          onClick={handleGenerateReport}
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <BarChart className="h-4 w-4" />
-              Generate Report
-            </>
-          )}
-        </Button>
       </div>
 
       {/* Filters */}
@@ -163,7 +144,7 @@ export default function ReportsPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-gray-500" />
               <Select
@@ -193,8 +174,8 @@ export default function ReportsPage() {
           <CardHeader className="pb-2">
             <CardTitle>Employees</CardTitle>
             <CardDescription>
-              {employeesLoading 
-                ? "Loading employees..." 
+              {employeesLoading
+                ? "Loading employees..."
                 : `${filteredEmployees.length} employees found`}
             </CardDescription>
           </CardHeader>
@@ -209,11 +190,10 @@ export default function ReportsPage() {
                 {filteredEmployees.map((employee) => (
                   <div
                     key={employee._id}
-                    className={`p-3 rounded-lg cursor-pointer flex items-center gap-3 ${
-                      selectedEmployee?._id === employee._id
+                    className={`p-3 rounded-lg cursor-pointer flex items-center gap-3 ${selectedEmployee?._id === employee._id
                         ? "bg-primary/10 border border-primary/20"
                         : "hover:bg-gray-100 border border-transparent"
-                    }`}
+                      }`}
                     onClick={() => setSelectedEmployee(employee)}
                   >
                     <Avatar>
@@ -348,7 +328,7 @@ export default function ReportsPage() {
                 No performance report is available for {selectedEmployee.name} for {" "}
                 {monthOptions.find(m => m.value === selectedMonth)?.label}.
               </p>
-              <Button 
+              <Button
                 onClick={handleGenerateReport}
                 disabled={isGenerating}
               >
