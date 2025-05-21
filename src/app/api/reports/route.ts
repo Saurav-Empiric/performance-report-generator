@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllEmployeeReports } from '@/services/report.services';
 import connectToDatabase from '@/lib/db';
 import mongoose from 'mongoose';
+import Report from '@/lib/models/report';
 
 // Helper to check if the ID is valid
 function isValidObjectId(id: string) {
@@ -29,9 +29,24 @@ export async function GET(req: NextRequest) {
     }
     
     await connectToDatabase();
-    const reports = await getAllEmployeeReports(employeeId);
     
-    return NextResponse.json(reports, { status: 200 });
+    // Fetch all reports for the employee
+    const reports = await Report.find({ employeeId }).sort({ month: -1 });
+    
+    // Format the response
+    const formattedReports = reports.map(report => ({
+      _id: report._id.toString(),
+      employeeId: report.employeeId.toString(),
+      month: report.month,
+      ranking: report.ranking,
+      improvements: report.improvements,
+      qualities: report.qualities,
+      summary: report.summary,
+      createdAt: report.createdAt,
+      updatedAt: report.updatedAt
+    }));
+    
+    return NextResponse.json(formattedReports, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch reports:', error);
     return NextResponse.json(

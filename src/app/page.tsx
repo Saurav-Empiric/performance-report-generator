@@ -45,7 +45,7 @@ export default function Home() {
         </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 border rounded-lg overflow-hidden">
-          {/* Sidebar - 1/4 of the width */}
+          {/* Sidebar*/}
           <div className="md:col-span-1 border-r min-h-[80vh]">
             {isLoading ? (
               <div className="flex justify-center items-center h-full">
@@ -64,7 +64,7 @@ export default function Home() {
             )}
           </div>
 
-          {/* Main content - 3/4 of the width */}
+          {/* Main content*/}
           <div className="md:col-span-2 lg:col-span-3 min-h-[80vh]">
             {!selectedEmployee && !viewMyReviews ? (
               <div className="flex items-center justify-center h-full">
