@@ -19,4 +19,16 @@ export interface Review {
   category?: string;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface Organization {
+  _id?: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  logoUrl: string;
+  departments: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
 } 

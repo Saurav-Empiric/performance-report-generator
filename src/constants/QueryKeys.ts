@@ -9,6 +9,8 @@ const queryKeys = {
     reports: 'reports',
     reportsByEmployee: (employeeId: string) => ['reports', employeeId],
     reportByEmployeeAndMonth: (employeeId: string, month: string) => ['reports', employeeId, month],
+    organization: 'organization',
+    departments: 'departments',
 };
 
 export default queryKeys;

@@ -9,7 +9,8 @@ import {
   LayoutDashboard, 
   LogOut, 
   Menu,
-  X
+  X,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -94,6 +95,17 @@ export function DashboardSidebar({ className }: SidebarProps) {
               >
                 <Users className="h-5 w-5" />
                 Employees
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/organization" 
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${
+                  isActive("/dashboard/organization") ? "bg-gray-100 font-medium" : ""
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                <Settings className="h-5 w-5" />
+                Organization Settings
               </Link>
             </li>
           </ul>
