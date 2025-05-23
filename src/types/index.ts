@@ -5,6 +5,7 @@ export interface Employee {
   department?: string;
   email?: string;
   hireDate?: Date;
+  assignedReviewees?: string[] | Employee[];
   createdAt?: Date;
   updatedAt?: Date;
 }

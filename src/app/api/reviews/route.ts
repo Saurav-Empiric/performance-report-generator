@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Review from '@/lib/models/review';
 import mongoose from 'mongoose';
+import Employee from '@/lib/models/employee';
 
 // GET all reviews with optional query params
 export async function GET(req: NextRequest) {
@@ -66,6 +67,32 @@ export async function POST(req: NextRequest) {
     }
     
     await connectToDatabase();
+    
+    // Check if the reviewer is allowed to review this employee
+    if (body.reviewedBy) {
+      const reviewer = await Employee.findById(body.reviewedBy);
+      if (!reviewer) {
+        return NextResponse.json(
+          { error: 'Reviewer not found' },
+          { status: 404 }
+        );
+      }
+      
+      // Check if the target employee is in the reviewer's assignedReviewees list
+      if (reviewer.assignedReviewees && reviewer.assignedReviewees.length > 0) {
+        const isAuthorized = reviewer.assignedReviewees.some((reviewee: mongoose.Types.ObjectId | string) => 
+          reviewee.toString() === body.targetEmployee.toString()
+        );
+        
+        if (!isAuthorized) {
+          return NextResponse.json(
+            { error: 'You are not authorized to review this employee' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+    
     const newReview = new Review(body);
     await newReview.save();
     

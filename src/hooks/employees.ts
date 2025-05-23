@@ -24,7 +24,7 @@ export const useEmployees = (options?: UseQueryOptions<Employee[]>) => {
     });
 };
 
-export const useEmployee = (id: string, options?: UseQueryOptions<Employee>) => {
+export const useEmployee = (id: string, options?: Partial<UseQueryOptions<Employee>>) => {
     return useQuery({
         queryKey: queryKeys.employee(id),
         queryFn: () => fetchEmployeeById(id),

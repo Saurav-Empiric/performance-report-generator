@@ -23,6 +23,9 @@ export default function Home() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [viewMyReviews, setViewMyReviews] = useState(false);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  // For demo purposes, use a state for current user ID
+  // this will come from authentication
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
 
   // TanStack Query hooks for data fetching
   const {
@@ -38,6 +41,11 @@ export default function Home() {
     isError: reviewsError,
     refetch: refetchReviews
   } = useReviews();
+
+  // If don't have a current user ID and have employees, set the first one as current user
+  if (!currentUserId && employees.length > 0 && !employeesLoading) {
+    setCurrentUserId(employees[0]._id);
+  }
 
   const handleSelectEmployee = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -74,6 +82,21 @@ export default function Home() {
               Employee Performance Feedback
             </h1>
             <div className="flex items-center gap-2">
+              {/* User selection dropdown for demo purposes */}
+              {employees.length > 0 && (
+                <select
+                  className="border rounded p-1 text-sm"
+                  value={currentUserId}
+                  onChange={(e) => setCurrentUserId(e.target.value)}
+                >
+                  <option value="">Select Current User</option>
+                  {employees.map((emp) => (
+                    <option key={emp._id} value={emp._id}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -107,6 +130,7 @@ export default function Home() {
               onSelectEmployee={handleSelectEmployee}
               onViewMyReviews={handleViewMyReviews}
               selectedEmployeeId={selectedEmployee?._id}
+              currentUserId={currentUserId}
             />
           </div>
 
@@ -139,6 +163,7 @@ export default function Home() {
                   employeeName={selectedEmployee.name}
                   employeeRole={selectedEmployee.role}
                   employeeDepartment={selectedEmployee.department}
+                  currentUserId={currentUserId}
                 />
               )
             )}

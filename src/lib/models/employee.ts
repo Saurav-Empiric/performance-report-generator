@@ -6,6 +6,7 @@ export interface IEmployee extends Document {
   email?: string;
   department?: string;
   hireDate?: Date;
+  assignedReviewees?: mongoose.Types.ObjectId[] | string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,7 +31,11 @@ const EmployeeSchema: Schema = new Schema(
     },
     hireDate: { 
       type: Date 
-    }
+    },
+    assignedReviewees: [{ 
+      type: Schema.Types.ObjectId, 
+      ref: 'Employee' 
+    }]
   },
   { 
     timestamps: true 

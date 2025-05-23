@@ -6,35 +6,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, User } from "lucide-react";
-
-interface Employee {
-  _id: string;
-  name: string;
-  role: string;
-  department?: string;
-}
+import { Employee } from "@/types";
 
 interface SidebarProps {
   employees: Employee[];
   onSelectEmployee: (employee: Employee) => void;
   onViewMyReviews: () => void;
   selectedEmployeeId?: string;
+  currentUserId?: string;
 }
 
 export function Sidebar({
   employees,
   onSelectEmployee,
   onViewMyReviews,
-  selectedEmployeeId
+  selectedEmployeeId,
+  currentUserId
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Filter employees based on search query
-  const filteredEmployees = employees.filter((employee) =>
-    employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (employee.department && employee.department.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Get the current user
+  const currentUser = currentUserId ? employees.find(emp => emp._id === currentUserId) : null;
+  
+  // Get the list of employees that the current user can review
+  const assignedReviewees = currentUser?.assignedReviewees || [];
+  
+  // Filter employees based on search query and whether they are assigned to the current user
+  const filteredEmployees = employees.filter((employee) => {
+    // First check if this employee is assigned to the current user for reviews
+    const isAssignedForReview = !currentUserId || 
+      !assignedReviewees.length || 
+      assignedReviewees.some(reviewee => 
+        typeof reviewee === 'string' 
+          ? reviewee === employee._id 
+          : reviewee._id === employee._id
+      );
+    
+    console.log('employee: ', employees);
+    // Then apply the search filter
+    const matchesSearch = 
+      employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (employee.department && employee.department.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return isAssignedForReview && matchesSearch;
+  });
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -90,7 +106,11 @@ export function Sidebar({
               ))
             ) : (
               <div className="px-3 py-8 text-center">
-                <p className="text-gray-500">No employees found</p>
+                <p className="text-gray-500">
+                  {currentUserId && assignedReviewees.length === 0 
+                    ? "You don't have permission to review any employees" 
+                    : "No employees found"}
+                </p>
               </div>
             )}
           </div>

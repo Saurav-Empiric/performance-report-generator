@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    const id = await params.id;
     
     if (!isValidObjectId(id)) {
       return NextResponse.json(
@@ -24,7 +24,8 @@ export async function GET(
     }
     
     await connectToDatabase();
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findById(id)
+      .populate('assignedReviewees', '_id name role department');
     
     if (!employee) {
       return NextResponse.json(
@@ -65,7 +66,7 @@ export async function PUT(
       id,
       { $set: body },
       { new: true, runValidators: true }
-    );
+    ).populate('assignedReviewees', '_id name role department');
     
     if (!updatedEmployee) {
       return NextResponse.json(
