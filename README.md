@@ -59,7 +59,7 @@ The application uses MongoDB with the following collections:
 }
 ```
 
-### Review Collections
+### Review Collection
 ```
 {
   _id: ObjectId,
