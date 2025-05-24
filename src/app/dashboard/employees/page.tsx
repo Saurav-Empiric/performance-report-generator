@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCreateEmployee, useDeleteEmployee, useEmployees, useOrganization } from "@/hooks";
-import { Building, CheckCircle2, Loader2, Mail, Search, Table, Trash2, User, UserPlus } from "lucide-react";
+import { Building, CheckCircle2, Loader2, Mail, Search, Table, Trash2, User, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function EmployeesPage() {
   const {
@@ -44,6 +45,7 @@ export default function EmployeesPage() {
     email: "",
     role: "",
     department: "",
+    assignedReviewees: [] as string[],
   });
 
   // Filter employees based on search
@@ -75,7 +77,8 @@ export default function EmployeesPage() {
       name: newEmployee.name,
       email: newEmployee.email,
       role: newEmployee.role,
-      department: newEmployee.department
+      department: newEmployee.department,
+      assignedReviewees: newEmployee.assignedReviewees
     }, {
       onSuccess: () => {
         // Reset form
@@ -84,6 +87,7 @@ export default function EmployeesPage() {
           email: "",
           role: "",
           department: "",
+          assignedReviewees: [],
         });
         // Switch to directory tab and show toast
         setActiveTab("directory");
@@ -361,6 +365,63 @@ export default function EmployeesPage() {
                           )}
                         </SelectContent>
                       </Select>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="assignedReviewees">Assign Employees to Review (Optional)</Label>
+                    <span className="text-xs text-gray-500">
+                      Select employees this person can review
+                    </span>
+                  </div>
+                  <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
+                    {isLoadingEmployees ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading employees...
+                      </div>
+                    ) : employees.length > 0 ? (
+                      <div className="space-y-2">
+                        {employees.map((employee) => (
+                          <div key={employee._id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`employee-${employee._id}`}
+                              checked={newEmployee.assignedReviewees.includes(employee._id)}
+                              onCheckedChange={(checked: boolean | 'indeterminate') => {
+                                if (checked === true) {
+                                  setNewEmployee({
+                                    ...newEmployee,
+                                    assignedReviewees: [...newEmployee.assignedReviewees, employee._id]
+                                  });
+                                } else {
+                                  setNewEmployee({
+                                    ...newEmployee,
+                                    assignedReviewees: newEmployee.assignedReviewees.filter(id => id !== employee._id)
+                                  });
+                                }
+                              }}
+                              disabled={isCreating}
+                            />
+                            <label
+                              htmlFor={`employee-${employee._id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                            >
+                              {employee.name}
+                              {employee.department && (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                  {employee.department}
+                                </span>
+                              )}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-2 text-sm text-gray-500">
+                        No employees available to assign
+                      </div>
                     )}
                   </div>
                 </div>
