@@ -11,6 +11,9 @@ const queryKeys = {
     reportByEmployeeAndMonth: (employeeId: string, month: string) => ['reports', employeeId, month],
     organization: 'organization',
     departments: 'departments',
+    // Auth related query keys
+    auth: 'auth',
+    user: 'user',
 };
 
 export default queryKeys;

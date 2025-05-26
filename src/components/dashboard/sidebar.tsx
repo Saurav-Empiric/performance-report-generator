@@ -112,10 +112,10 @@ export function DashboardSidebar({ className }: SidebarProps) {
         </nav>
         
         <div className="p-4 border-t">
-          <Link href="/" className="flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 rounded-md">
+          <Button className="flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 rounded-md">
             <LogOut className="h-5 w-5" />
             Logout
-          </Link>
+          </Button>
         </div>
       </div>
     </>
