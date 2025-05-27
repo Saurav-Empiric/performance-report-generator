@@ -9,7 +9,6 @@ import { toast } from 'sonner'
 import { useAuth } from '@/hooks'
 
 interface SignupFormData {
-    name: string
     email: string
     password: string
     confirmPassword: string
@@ -18,7 +17,6 @@ interface SignupFormData {
 export default function OrganizationSignup() {
     const { signUp, isSigningUp } = useAuth()
     const [formData, setFormData] = useState<SignupFormData>({
-        name: '',
         email: '',
         password: '',
         confirmPassword: '',
@@ -39,8 +37,12 @@ export default function OrganizationSignup() {
         }
 
         // Call the signUp mutation with the form data
-        const { name, email, password } = formData
-        signUp({ name, email, password })
+        const { email, password } = formData
+        signUp({ 
+            email, 
+            password,
+            role: 'organization'
+        })
     }
 
     return (
@@ -60,19 +62,6 @@ export default function OrganizationSignup() {
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Organization Name</Label>
-                            <Input
-                                id="name"
-                                name="name"
-                                type="text"
-                                required
-                                placeholder="Your organization name"
-                                value={formData.name}
-                                onChange={handleChange}
-                            />
-                        </div>
-
                         <div className="space-y-2">
                             <Label htmlFor="email">Email address</Label>
                             <Input

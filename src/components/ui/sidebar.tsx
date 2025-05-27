@@ -22,7 +22,7 @@ export function Sidebar({
   onViewMyReviews,
   selectedEmployeeId,
   currentUserId
-}: SidebarProps) {
+}: Readonly<SidebarProps>) {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Get the current user

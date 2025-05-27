@@ -6,9 +6,12 @@ export interface SignInCredentials {
 }
 
 export interface SignUpData {
-  name: string;
+  name?: string;
   email: string;
   password: string;
+  role?: string;
+  companyAddress?: string;
+  phoneNumber?: string;
 }
 
 export interface AuthResponse {

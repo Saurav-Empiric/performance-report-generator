@@ -29,7 +29,7 @@ export const useAuth = () => {
     onSuccess: (data) => {
       if (data.user) {
         toast.success(data.message || 'Account created successfully');
-        router.push('/dashboard');
+        router.push('/organization/details');
       } else if (data.error) {
         toast.error(data.error);
       }

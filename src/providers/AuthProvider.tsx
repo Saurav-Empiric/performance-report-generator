@@ -9,12 +9,20 @@ interface AuthContextType {
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
+  userRole: string | null
+  organizationDetails: {
+    name: string | null
+    companyAddress: string | null
+    phoneNumber: string | null
+  } | null
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  userRole: null,
+  organizationDetails: null
 })
 
 export const useAuth = () => useContext(AuthContext)
@@ -30,11 +38,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const user = data?.user || null
   const isAuthenticated = !!user
+  
+  // Extract role and organization details from user metadata
+  const userRole = user?.user_metadata?.role || null
+  const organizationDetails = user ? {
+    name: user.user_metadata?.name || null,
+    companyAddress: user.user_metadata?.companyAddress || null,
+    phoneNumber: user.user_metadata?.phoneNumber || null
+  } : null
 
   // Redirect unauthenticated users away from protected routes
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !pathname.includes('/organization/signin') && !pathname.includes('/organization/signup')) {
-      router.push('/organization/signin')
+      // router.push('/organization/signin')
     }
   }, [isAuthenticated, isLoading, pathname, router])
 
@@ -42,6 +58,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     isLoading,
     isAuthenticated,
+    userRole,
+    organizationDetails
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
