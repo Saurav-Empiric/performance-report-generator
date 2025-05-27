@@ -1,12 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
+import { useAuth } from '@/hooks'
 
 interface SigninFormData {
   email: string
@@ -14,8 +13,7 @@ interface SigninFormData {
 }
 
 export default function OrganizationSignin() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const { signIn, isSigningIn } = useAuth()
   const [formData, setFormData] = useState<SigninFormData>({
     email: '',
     password: '',
@@ -28,32 +26,7 @@ export default function OrganizationSignin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-
-    try {
-      const res = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      const result = await res.json();
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(result.message || 'successfully signin')
-        router.push('/dashboard')
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to sign in')
-    } finally {
-      setLoading(false)
-      setFormData({
-        email: '',
-        password: '',
-      })
-    }
+    signIn(formData)
   }
 
   return (
@@ -110,9 +83,9 @@ export default function OrganizationSignin() {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading}
+            disabled={isSigningIn}
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {isSigningIn ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
       </div>

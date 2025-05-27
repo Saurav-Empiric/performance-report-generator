@@ -3,17 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  BarChart3, 
-  Users, 
-  LayoutDashboard, 
-  LogOut, 
+import {
+  BarChart3,
+  Users,
+  LayoutDashboard,
+  LogOut,
   Menu,
   X,
   Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks";
 
 interface SidebarProps {
   className?: string;
@@ -22,9 +23,15 @@ interface SidebarProps {
 export function DashboardSidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { logout, isLoggingOut } = useAuth();
 
   const isActive = (path: string) => {
     return pathname === path;
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsOpen(false);
   };
 
   return (
@@ -41,7 +48,7 @@ export function DashboardSidebar({ className }: SidebarProps) {
       </Button>
 
       {/* Backdrop - Only visible when sidebar is open on mobile */}
-      <div 
+      <div
         className={cn(
           "fixed inset-0 bg-black/20 z-40 lg:hidden transition-opacity duration-300",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -61,14 +68,13 @@ export function DashboardSidebar({ className }: SidebarProps) {
         <div className="p-4 border-b">
           <h1 className="text-xl font-bold text-primary">Organization Portal</h1>
         </div>
-        
+
         <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-1">
             <li>
-              <Link href="/dashboard" 
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${
-                  isActive("/dashboard") ? "bg-gray-100 font-medium" : ""
-                }`}
+              <Link href="/dashboard"
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard") ? "bg-gray-100 font-medium" : ""
+                  }`}
                 onClick={() => setIsOpen(false)}
               >
                 <LayoutDashboard className="h-5 w-5" />
@@ -76,10 +82,9 @@ export function DashboardSidebar({ className }: SidebarProps) {
               </Link>
             </li>
             <li>
-              <Link href="/dashboard/reports" 
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${
-                  isActive("/dashboard/reports") ? "bg-gray-100 font-medium" : ""
-                }`}
+              <Link href="/dashboard/reports"
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/reports") ? "bg-gray-100 font-medium" : ""
+                  }`}
                 onClick={() => setIsOpen(false)}
               >
                 <BarChart3 className="h-5 w-5" />
@@ -87,10 +92,9 @@ export function DashboardSidebar({ className }: SidebarProps) {
               </Link>
             </li>
             <li>
-              <Link href="/dashboard/employees" 
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${
-                  isActive("/dashboard/employees") ? "bg-gray-100 font-medium" : ""
-                }`}
+              <Link href="/dashboard/employees"
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/employees") ? "bg-gray-100 font-medium" : ""
+                  }`}
                 onClick={() => setIsOpen(false)}
               >
                 <Users className="h-5 w-5" />
@@ -98,10 +102,9 @@ export function DashboardSidebar({ className }: SidebarProps) {
               </Link>
             </li>
             <li>
-              <Link href="/dashboard/organization" 
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${
-                  isActive("/dashboard/organization") ? "bg-gray-100 font-medium" : ""
-                }`}
+              <Link href="/dashboard/organization"
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/organization") ? "bg-gray-100 font-medium" : ""
+                  }`}
                 onClick={() => setIsOpen(false)}
               >
                 <Settings className="h-5 w-5" />
@@ -110,11 +113,16 @@ export function DashboardSidebar({ className }: SidebarProps) {
             </li>
           </ul>
         </nav>
-        
+
         <div className="p-4 border-t">
-          <Button className="flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 rounded-md">
-            <LogOut className="h-5 w-5" />
-            Logout
+          <Button
+            className="flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 rounded-md w-full justify-start"
+            variant="ghost"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            <LogOut className={`${isLoggingOut ? 'animate-bounce' : 'animate-none'} h-5 w-5`} />
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
           </Button>
         </div>
       </div>

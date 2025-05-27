@@ -27,28 +27,27 @@ export function Sidebar({
 
   // Get the current user
   const currentUser = currentUserId ? employees.find(emp => emp._id === currentUserId) : null;
-  
+
   // Get the list of employees that the current user can review
   const assignedReviewees = currentUser?.assignedReviewees || [];
-  
+
   // Filter employees based on search query and whether they are assigned to the current user
   const filteredEmployees = employees.filter((employee) => {
     // First check if this employee is assigned to the current user for reviews
-    const isAssignedForReview = !currentUserId || 
-      !assignedReviewees.length || 
-      assignedReviewees.some(reviewee => 
-        typeof reviewee === 'string' 
-          ? reviewee === employee._id 
+    const isAssignedForReview = !currentUserId ||
+      !assignedReviewees.length ||
+      assignedReviewees.some(reviewee =>
+        typeof reviewee === 'string'
+          ? reviewee === employee._id
           : reviewee._id === employee._id
       );
-    
-    console.log('employee: ', employees);
+
     // Then apply the search filter
-    const matchesSearch = 
+    const matchesSearch =
       employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (employee.department && employee.department.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     return isAssignedForReview && matchesSearch;
   });
 
@@ -89,8 +88,8 @@ export function Sidebar({
                 <button
                   key={employee._id}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm ${selectedEmployeeId === employee._id
-                      ? "bg-gray-100 font-medium"
-                      : "hover:bg-gray-50"
+                    ? "bg-gray-100 font-medium"
+                    : "hover:bg-gray-50"
                     }`}
                   onClick={() => onSelectEmployee(employee)}
                 >
@@ -107,8 +106,8 @@ export function Sidebar({
             ) : (
               <div className="px-3 py-8 text-center">
                 <p className="text-gray-500">
-                  {currentUserId && assignedReviewees.length === 0 
-                    ? "You don't have permission to review any employees" 
+                  {currentUserId && assignedReviewees.length === 0
+                    ? "You don't have permission to review any employees"
                     : "No employees found"}
                 </p>
               </div>

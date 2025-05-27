@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks'
 
 interface SignupFormData {
     name: string
@@ -16,8 +16,7 @@ interface SignupFormData {
 }
 
 export default function OrganizationSignup() {
-    const router = useRouter()
-    const [loading, setLoading] = useState(false)
+    const { signUp, isSigningUp } = useAuth()
     const [formData, setFormData] = useState<SignupFormData>({
         name: '',
         email: '',
@@ -32,41 +31,16 @@ export default function OrganizationSignup() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
 
         // Validate passwords match
         if (formData.password !== formData.confirmPassword) {
             toast.error('Passwords do not match')
-            setLoading(false)
             return
         }
 
-        try {
-            const res = await fetch('/api/auth/signup', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-            const result = await res.json();
-            if (result.error) {
-                toast.error(result.error);
-            } else {
-                toast.success(result.message || 'Account created successfully')
-                router.push('/dashboard')
-            }
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to create account')
-        } finally {
-            setLoading(false)
-            setFormData({
-                name: '',
-                email: '',
-                password: '',
-                confirmPassword: '',
-            })
-        }
+        // Call the signUp mutation with the form data
+        const { name, email, password } = formData
+        signUp({ name, email, password })
     }
 
     return (
@@ -145,9 +119,9 @@ export default function OrganizationSignup() {
                     <Button
                         type="submit"
                         className="w-full"
-                        disabled={loading}
+                        disabled={isSigningUp}
                     >
-                        {loading ? 'Creating account...' : 'Create account'}
+                        {isSigningUp ? 'Creating Account...' : 'Create Account'}
                     </Button>
                 </form>
             </div>

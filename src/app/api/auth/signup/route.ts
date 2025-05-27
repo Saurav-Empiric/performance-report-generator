@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
     const { email, password, name } = await request.json();
+    
+    if(!email || !password || !name) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
     const supabase = await createClient();
 
     const { data, error } = await supabase.auth.signUp({
@@ -12,7 +17,6 @@ export async function POST(request: NextRequest) {
             data: { name },
         },
     });
-console.log('signupdata: ', data)
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 400 });
     }

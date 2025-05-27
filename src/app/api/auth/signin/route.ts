@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
     const { email, password } = await request.json();
+    
+    if (!email || !password) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
     const supabase = await createClient();
 
     const { data, error } = await supabase.auth.signInWithPassword({
