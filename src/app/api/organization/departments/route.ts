@@ -1,6 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/db';
-import Organization from '@/lib/models/organization';
+import { createClient } from '@/lib/supabase/server';
+
+// GET all departments
+export async function GET(req: NextRequest) {
+  try {
+    const supabase = await createClient();
+    
+    // Get the organization
+    const { data: orgData, error: orgError } = await supabase
+      .from('organization')
+      .select('id')
+      .single();
+    
+    if (orgError) {
+      console.error('Error fetching organization:', orgError);
+      return NextResponse.json(
+        { error: 'Organization not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Get all departments for this organization
+    const { data: departments, error: deptError } = await supabase
+      .from('departments')
+      .select('*')
+      .eq('organization_id', orgData.id)
+      .order('name', { ascending: true });
+      
+    if (deptError) {
+      console.error('Error fetching departments:', deptError);
+      return NextResponse.json(
+        { error: 'Failed to fetch departments' },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json(departments, { status: 200 });
+  } catch (error) {
+    console.error('Failed to fetch departments:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch departments' },
+      { status: 500 }
+    );
+  }
+}
 
 // POST to add a department
 export async function POST(req: NextRequest) {
@@ -14,12 +57,16 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    await connectToDatabase();
+    const supabase = await createClient();
     
     // Get the organization
-    let organization = await Organization.findOne({});
+    const { data: orgData, error: orgError } = await supabase
+      .from('organization')
+      .select('id')
+      .single();
     
-    if (!organization) {
+    if (orgError) {
+      console.error('Error fetching organization:', orgError);
       return NextResponse.json(
         { error: 'Organization not found' },
         { status: 404 }
@@ -27,7 +74,22 @@ export async function POST(req: NextRequest) {
     }
     
     // Check if department already exists
-    if (organization.departments.includes(departmentName)) {
+    const { data: existingDept, error: deptError } = await supabase
+      .from('departments')
+      .select('id')
+      .eq('organization_id', orgData.id)
+      .eq('name', departmentName)
+      .maybeSingle();
+      
+    if (deptError) {
+      console.error('Error checking existing department:', deptError);
+      return NextResponse.json(
+        { error: 'Error checking for existing department' },
+        { status: 500 }
+      );
+    }
+    
+    if (existingDept) {
       return NextResponse.json(
         { error: 'Department already exists' },
         { status: 400 }
@@ -35,10 +97,24 @@ export async function POST(req: NextRequest) {
     }
     
     // Add department
-    organization.departments.push(departmentName);
-    await organization.save();
+    const { data: newDept, error: insertError } = await supabase
+      .from('departments')
+      .insert({
+        name: departmentName,
+        organization_id: orgData.id
+      })
+      .select()
+      .single();
+      
+    if (insertError) {
+      console.error('Error adding department:', insertError);
+      return NextResponse.json(
+        { error: 'Failed to add department' },
+        { status: 500 }
+      );
+    }
     
-    return NextResponse.json(organization, { status: 200 });
+    return NextResponse.json(newDept, { status: 201 });
   } catch (error) {
     console.error('Failed to add department:', error);
     return NextResponse.json(

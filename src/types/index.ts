@@ -23,13 +23,10 @@ export interface Review {
 }
 
 export interface Organization {
-  _id?: string;
+  id?: string;
   name: string;
   email: string;
   phone: string;
   address: string;
-  logoUrl: string;
   departments: string[];
-  createdAt?: Date;
-  updatedAt?: Date;
 } 

@@ -1,28 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/db';
-import Organization from '@/lib/models/organization';
+import { createClient } from '@/lib/supabase/server';
 
 // GET organization settings
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase();
-    
-    // Get the organization settings (only one organization should exist)
-    let organization = await Organization.findOne({});
-    
-    // If no organization exists, create a default one
-    if (!organization) {
-      organization = await Organization.create({
-        name: "My Organization",
-        email: "contact@organization.com",
-        phone: "",
-        address: "",
-        logoUrl: "",
-        departments: []
-      });
+    const supabase = await createClient();
+
+    // Get organization data
+    const { data: orgData, error: orgError } = await supabase
+      .from('organization')
+      .select('id, name, email, phone, address')
+      .single();
+
+    if (orgError) {
+      // If the error is that no rows were found, return a specific status code
+      if (orgError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Organization details not found', isDetailsRequired: true }, { status: 404 });
+      }
+
+      console.error('Error fetching organization:', orgError);
+      return NextResponse.json({ error: orgError.message }, { status: 500 });
     }
-    
-    return NextResponse.json(organization, { status: 200 });
+
+    if (!orgData) {
+      return NextResponse.json({ error: 'Organization details not found', isDetailsRequired: true }, { status: 404 });
+    }
+
+    // Get departments for this organization
+    const { data: departmentsData, error: deptError } = await supabase
+      .from('departments')
+      .select('name')
+      .eq('organization_id', orgData.id);
+
+    if (deptError) {
+      console.error('Error fetching departments:', deptError);
+      return NextResponse.json({ error: deptError.message }, { status: 500 });
+    }
+
+    // Combine organization data with departments
+    const responseData = {
+      ...orgData,
+      departments: departmentsData.map((dept) => dept.name) ?? []
+    };
+
+    return NextResponse.json(responseData, { status: 200 });
+
   } catch (error) {
     console.error('Failed to fetch organization settings:', error);
     return NextResponse.json(
@@ -36,37 +58,77 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    
-    // Validate required fields
-    if (!body.name || !body.email) {
-      return NextResponse.json(
-        { error: 'Name and email are required fields' },
-        { status: 400 }
-      );
+    const supabase = await createClient();
+
+    // Get the current organization to check if it exists
+    const { data: existingOrg, error: fetchError } = await supabase
+      .from('organization')
+      .select('id')
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      console.error('Error fetching organization:', fetchError);
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
-    
-    await connectToDatabase();
-    
-    // Find and update organization (only one should exist)
-    const organization = await Organization.findOne({});
-    
-    if (!organization) {
-      // If no organization exists, create a new one
-      const newOrganization = await Organization.create(body);
-      return NextResponse.json(newOrganization, { status: 201 });
+
+    // Use all fields from the body for update
+    const { ...updateData } = body;
+    let result;
+
+    if (!existingOrg) {
+      // Get the current user's ID
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error('Error getting user:', userError);
+        return NextResponse.json({ error: 'Authentication error' }, { status: 401 });
+      }
+
+      if (!userData?.user) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+
+      // If no organization exists, create a new one with the user_id
+      const { data: newOrg, error: insertError } = await supabase
+        .from('organization')
+        .insert({
+          ...updateData,
+          user_id: userData.user.id
+        })
+        .select('id, name, email, phone, address')
+        .single();
+
+      if (insertError) {
+        console.error('Error creating organization:', insertError);
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+
+      result = newOrg;
+      return NextResponse.json({
+        ...result,
+        message: 'Organization details created successfully'
+      }, { status: 201 });
+    } else {
+      // Update existing organization
+      const { data: updatedOrg, error: updateError } = await supabase
+        .from('organization')
+        .update(updateData)
+        .eq('id', existingOrg.id)
+        .select('id, name, email, phone, address')
+        .single();
+
+      if (updateError) {
+        console.error('Error updating organization:', updateError);
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      result = updatedOrg;
     }
-    
-    // Update fields (excluding departments which are handled by a separate endpoint)
-    const { departments, ...updateData } = body;
-    
-    // Update organization
-    const updatedOrganization = await Organization.findByIdAndUpdate(
-      organization._id,
-      updateData,
-      { new: true }
-    );
-    
-    return NextResponse.json(updatedOrganization, { status: 200 });
+
+    return NextResponse.json({
+      ...result,
+      message: 'Organization details updated successfully'
+    }, { status: 200 });
   } catch (error) {
     console.error('Failed to update organization settings:', error);
     return NextResponse.json(
