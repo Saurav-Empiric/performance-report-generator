@@ -1,12 +1,5 @@
+import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/db';
-import Employee from '@/lib/models/employee';
-import mongoose from 'mongoose';
-
-// Helper to check if the ID is valid
-function isValidObjectId(id: string) {
-  return mongoose.Types.ObjectId.isValid(id);
-}
 
 // GET a specific employee
 export async function GET(
@@ -14,72 +7,99 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = await params.id;
+    const { id } = params;
     
-    if (!isValidObjectId(id)) {
+    if (!id) {
       return NextResponse.json(
-        { error: 'Invalid employee ID format' },
+        { error: 'Employee ID is required' },
         { status: 400 }
       );
     }
     
-    await connectToDatabase();
-    const employee = await Employee.findById(id)
-      .populate('assignedReviewees', '_id name role department');
+    const supabase = await createClient();
     
-    if (!employee) {
+    // Get the employee with department details
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select(`
+        id,
+        name,
+        role,
+        email,
+        department_id,
+        departments:department_id(
+          id,
+          name
+        )
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (empError) {
+      console.error('Error fetching employee:', empError);
       return NextResponse.json(
         { error: 'Employee not found' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json(employee, { status: 200 });
+    // Get reviewees for this employee
+    const { data: reviewRelationships, error: relError } = await supabase
+      .from('employee_review_to')
+      .select(`
+        reviewee_id
+      `)
+      .eq('reviewer_id', id);
+    
+    if (relError) {
+      console.error('Error fetching review relationships:', relError);
+      // Continue without reviewees
+    }
+    
+    // Get the details of all reviewees
+    const revieweeIds = reviewRelationships?.map(rel => rel.reviewee_id) || [];
+    let assignedReviewees: any[] = [];
+    
+    if (revieweeIds.length > 0) {
+      const { data: reviewees, error: revieweesError } = await supabase
+        .from('employees')
+        .select(`
+          id,
+          name,
+          role,
+          department_id,
+          departments:department_id(
+            id,
+            name
+          )
+        `)
+        .in('id', revieweeIds);
+      
+      if (!revieweesError && reviewees) {
+        assignedReviewees = reviewees.map(reviewee => ({
+          _id: reviewee.id,
+          name: reviewee.name,
+          role: reviewee.role,
+          department: (reviewee.departments as any)?.name ?? null
+        }));
+      }
+    }
+    
+    // Format the response
+    const formattedEmployee = {
+      _id: employee.id,
+      name: employee.name,
+      role: employee.role,
+      email: employee.email,
+      department: (employee.departments as any)?.name ?? null,
+      assignedReviewees
+    };
+    
+    return NextResponse.json(formattedEmployee, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch employee:', error);
     return NextResponse.json(
       { error: 'Failed to fetch employee' },
-      { status: 500 }
-    );
-  }
-}
-
-// PUT to update an employee
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const id = params.id;
-    
-    if (!isValidObjectId(id)) {
-      return NextResponse.json(
-        { error: 'Invalid employee ID format' },
-        { status: 400 }
-      );
-    }
-    
-    const body = await req.json();
-    
-    await connectToDatabase();
-    const updatedEmployee = await Employee.findByIdAndUpdate(
-      id,
-      { $set: body },
-      { new: true, runValidators: true }
-    ).populate('assignedReviewees', '_id name role department');
-    
-    if (!updatedEmployee) {
-      return NextResponse.json(
-        { error: 'Employee not found' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(updatedEmployee, { status: 200 });
-  } catch (error) {
-    console.error('Failed to update employee:', error);
-    return NextResponse.json(
-      { error: 'Failed to update employee' },
       { status: 500 }
     );
   }
@@ -91,22 +111,56 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     
-    if (!isValidObjectId(id)) {
+    if (!id) {
       return NextResponse.json(
-        { error: 'Invalid employee ID format' },
+        { error: 'Employee ID is required' },
         { status: 400 }
       );
     }
     
-    await connectToDatabase();
-    const deletedEmployee = await Employee.findByIdAndDelete(id);
+    const supabase = await createClient();
     
-    if (!deletedEmployee) {
+    // Check if employee exists
+    const { error: checkError } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (checkError) {
+      console.error('Error checking employee:', checkError);
       return NextResponse.json(
         { error: 'Employee not found' },
         { status: 404 }
+      );
+    }
+    
+    // Delete all review relationships for this employee
+    // This is technically not needed due to CASCADE constraints in your schema,
+    // but it's cleaner to delete related records first
+    const { error: reviewError } = await supabase
+      .from('employee_review_to')
+      .delete()
+      .or(`reviewer_id.eq.${id},reviewee_id.eq.${id}`);
+    
+    if (reviewError) {
+      console.error('Error deleting review relationships:', reviewError);
+      // Continue anyway, as the employee deletion might still succeed
+    }
+    
+    // Delete the employee
+    const { error: deleteError } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', id);
+    
+    if (deleteError) {
+      console.error('Error deleting employee:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete employee' },
+        { status: 500 }
       );
     }
     
