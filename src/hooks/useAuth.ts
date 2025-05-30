@@ -14,8 +14,8 @@ export const useAuth = () => {
   const signIn = useSignIn({
     onSuccess: (data) => {
       if (data.user) {
-        toast.success(data.message || 'Successfully signed in');
-        router.push('/dashboard');
+        toast.success(data.message ?? 'Successfully signed in');
+        router.push('/organization/dashboard');
       } else if (data.error) {
         toast.error(data.error);
       }
@@ -28,7 +28,7 @@ export const useAuth = () => {
   const signUp = useSignUp({
     onSuccess: (data) => {
       if (data.user) {
-        toast.success(data.message || 'Account created successfully');
+        toast.success(data.message ?? 'Account created successfully');
         router.push('/organization/details');
       } else if (data.error) {
         toast.error(data.error);

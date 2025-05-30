@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, Search, Filter, Download, Loader2, CalendarIcon, BarChart } from "lucide-react";
-import { useEmployees } from "@/hooks";
-import { useGenerateReport, useEmployeeReports } from "@/hooks";
-import { toast } from "sonner";
+import { useEmployeeReports, useEmployees, useGenerateReport } from "@/hooks";
 import { Employee } from "@/types";
+import { CalendarIcon, Filter, Loader2, Search, Star } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 // Generate formatted months for the last 12 months
 const getMonthOptions = () => {
@@ -191,8 +190,8 @@ export default function ReportsPage() {
                   <div
                     key={employee._id}
                     className={`p-3 rounded-lg cursor-pointer flex items-center gap-3 ${selectedEmployee?._id === employee._id
-                        ? "bg-primary/10 border border-primary/20"
-                        : "hover:bg-gray-100 border border-transparent"
+                      ? "bg-primary/10 border border-primary/20"
+                      : "hover:bg-gray-100 border border-transparent"
                       }`}
                     onClick={() => setSelectedEmployee(employee)}
                   >

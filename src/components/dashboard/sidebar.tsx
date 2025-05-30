@@ -20,7 +20,7 @@ interface SidebarProps {
   className?: string;
 }
 
-export function DashboardSidebar({ className }: SidebarProps) {
+export function DashboardSidebar({ className }: Readonly<SidebarProps>) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const { logout, isLoggingOut } = useAuth();
@@ -72,7 +72,7 @@ export function DashboardSidebar({ className }: SidebarProps) {
         <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-1">
             <li>
-              <Link href="/dashboard"
+              <Link href="/organization/dashboard"
                 className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
@@ -82,7 +82,7 @@ export function DashboardSidebar({ className }: SidebarProps) {
               </Link>
             </li>
             <li>
-              <Link href="/dashboard/reports"
+              <Link href="/organization/reports"
                 className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/reports") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
@@ -92,7 +92,7 @@ export function DashboardSidebar({ className }: SidebarProps) {
               </Link>
             </li>
             <li>
-              <Link href="/dashboard/employees"
+              <Link href="/organization/employees"
                 className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/employees") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
@@ -102,7 +102,7 @@ export function DashboardSidebar({ className }: SidebarProps) {
               </Link>
             </li>
             <li>
-              <Link href="/dashboard/organization"
+              <Link href="/organization/settings"
                 className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/organization") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
