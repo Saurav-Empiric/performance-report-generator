@@ -8,34 +8,32 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
+import { useMyReviews } from "@/hooks/reviews";
 
 interface Employee {
-  _id: string;
+  id: string;
   name: string;
   role: string;
   department?: string;
 }
 
 interface Review {
-  _id: string;
+  id: string;
   content: string;
   timestamp: Date;
-  targetEmployee: Employee | string;
-  reviewedBy?: Employee | string;
-  rating?: number;
-  category?: string;
+  targetEmployee: Employee;
 }
 
-interface MyReviewsProps {
-  reviews: Review[];
-}
-
-export function MyReviews({ reviews }: MyReviewsProps) {
+export function MyReviews() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-
-  const userReviews = reviews || [];
+  
+  // Use the new hook to fetch reviews written by the current user
+  const { data, isLoading, isError, refetch } = useMyReviews();
+  
+  // Get reviews from the response or default to empty array
+  const userReviews = data?.reviews || [];
 
   const getEmployeeName = (employee: any): string => {
     if (!employee) return "Unknown";
@@ -52,7 +50,7 @@ export function MyReviews({ reviews }: MyReviewsProps) {
   const getEmployeeId = (employee: any): string => {
     if (!employee) return "unknown";
     if (typeof employee === "string") return employee;
-    return employee._id || "unknown";
+    return employee.id || "unknown";
   };
 
   const getEmployeeDepartment = (employee: any): string | undefined => {
@@ -60,18 +58,13 @@ export function MyReviews({ reviews }: MyReviewsProps) {
     return employee.department;
   };
 
-  const filteredReviews = userReviews.filter((review) => {
+  const filteredReviews = userReviews.filter((review: { content: string; targetEmployee: any; }) => {
     const matchesSearch =
       review.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      getEmployeeName(review.targetEmployee).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (review.category && review.category.toLowerCase().includes(searchQuery.toLowerCase()));
+      getEmployeeName(review.targetEmployee).toLowerCase().includes(searchQuery.toLowerCase());
     if (activeTab === "all") return matchesSearch;
-    return matchesSearch && review.category === activeTab;
+    return matchesSearch;
   });
-
-  const categories = Array.from(
-    new Set(userReviews.map(review => review.category).filter(Boolean))
-  ) as string[];
 
   const formatDate = (dateString: string | Date) => {
     const date = new Date(dateString);
@@ -84,15 +77,24 @@ export function MyReviews({ reviews }: MyReviewsProps) {
     });
   };
 
-
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
       <Card className="border shadow-none flex-1 flex flex-col min-h-0">
-        <CardHeader className="flex-shrink-0">
+        <CardHeader className="flex-shrink-0 flex flex-row items-center justify-between">
           <CardTitle className="text-xl">My Reviews</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetch()} 
+            disabled={isLoading}
+            className="h-8 px-2"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </CardHeader>
         <CardContent className="space-y-6 flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Search and Filter Bar */}
+          {/* Search Bar */}
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center flex-shrink-0">
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
@@ -103,30 +105,33 @@ export function MyReviews({ reviews }: MyReviewsProps) {
                 className="pl-8"
               />
             </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-              <TabsList className="w-full">
-                <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
-                {categories.slice(0, 3).map((category) => (
-                  <TabsTrigger key={category} value={category} className="flex-1">
-                    {category}
-                  </TabsTrigger>
-                ))}
-                {categories.length > 3 && (
-                  <TabsTrigger value="more" className="flex-1">More</TabsTrigger>
-                )}
-              </TabsList>
-            </Tabs>
           </div>
 
           {/* Reviews List with ScrollArea */}
           <div className="flex-1 flex flex-col min-h-0">
-            {userReviews.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-500" />
+              </div>
+            ) : isError ? (
+              <div className="text-center py-8 border rounded-lg bg-gray-50">
+                <p className="text-red-500">Error loading reviews</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => refetch()}
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : userReviews.length > 0 ? (
               <>
                 {filteredReviews.length > 0 ? (
                   <ScrollArea className="flex-1 min-h-0">
                     <div className="space-y-4 pr-4">
-                      {filteredReviews.map((review) => (
-                        <Card key={review._id} className="border hover:shadow-md transition-shadow">
+                      {filteredReviews.map((review: Review) => (
+                        <Card key={review.id} className="border hover:shadow-md transition-shadow">
                           <CardHeader className="flex flex-row items-center gap-4 pb-2">
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={`https://avatar.vercel.sh/${getEmployeeId(review.targetEmployee)}`} />
@@ -135,7 +140,6 @@ export function MyReviews({ reviews }: MyReviewsProps) {
                             <div className="flex-1">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                 <CardTitle className="text-lg">{getEmployeeName(review.targetEmployee)}</CardTitle>
-  
                               </div>
                               <div className="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 gap-1 sm:gap-2">
                                 <p>{getEmployeeRole(review.targetEmployee)}</p>
@@ -155,13 +159,6 @@ export function MyReviews({ reviews }: MyReviewsProps) {
                                 <p className="text-xs text-gray-500">
                                   {formatDate(review.timestamp)}
                                 </p>
-                                {review.rating && (
-                                  <div className="flex items-center">
-                                    <span className="text-xs font-medium bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                                      Rating: {review.rating}/5
-                                    </span>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </CardContent>

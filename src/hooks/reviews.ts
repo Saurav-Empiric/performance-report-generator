@@ -2,6 +2,8 @@ import queryKeys from '@/constants/QueryKeys';
 import {
     createReview,
     deleteReview,
+    fetchEmployeeReviewByCurrentUser,
+    fetchMyReviews,
     fetchReviewById,
     fetchReviews,
     fetchReviewsByEmployeeId,
@@ -56,6 +58,27 @@ export const useReview = (id: string, options?: UseQueryOptions<Review>) => {
     });
 };
 
+// Hook to fetch review given by current user for a specific employee
+export const useEmployeeReviewByCurrentUser = (
+    employeeId: string,
+    options?: UseQueryOptions<any>
+) => {
+    return useQuery({
+        queryKey: queryKeys.employeeReviewByCurrentUser(employeeId),
+        queryFn: () => fetchEmployeeReviewByCurrentUser(employeeId),
+        ...options,
+    });
+};
+
+// Hook to fetch all reviews written by the current user
+export const useMyReviews = (options?: UseQueryOptions<any>) => {
+    return useQuery({
+        queryKey: [queryKeys.myReviews],
+        queryFn: fetchMyReviews,
+        ...options,
+    });
+};
+
 export const useCreateReview = (
     options?: UseMutationOptions<
         Review,
@@ -94,6 +117,22 @@ export const useCreateReview = (
                     (old) => old ? [...old, newReview] : [newReview]
                 );
             }
+            
+            // Invalidate the employeeReviewByCurrentUser cache
+            if (typeof newReview.targetEmployee === 'string') {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.employeeReviewByCurrentUser(newReview.targetEmployee)
+                });
+            } else if (newReview.targetEmployee._id) {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.employeeReviewByCurrentUser(newReview.targetEmployee._id)
+                });
+            }
+            
+            // Invalidate the myReviews cache
+            queryClient.invalidateQueries({
+                queryKey: [queryKeys.myReviews]
+            });
         },
         ...options,
     });
@@ -142,6 +181,22 @@ export const useUpdateReview = (
                     queryKey: queryKeys.reviewsByReviewer(reviewerId)
                 });
             }
+            
+            // Invalidate the employeeReviewByCurrentUser cache
+            if (typeof updatedReview.targetEmployee === 'string') {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.employeeReviewByCurrentUser(updatedReview.targetEmployee)
+                });
+            } else if (updatedReview.targetEmployee._id) {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.employeeReviewByCurrentUser(updatedReview.targetEmployee._id)
+                });
+            }
+            
+            // Invalidate the myReviews cache
+            queryClient.invalidateQueries({
+                queryKey: [queryKeys.myReviews]
+            });
         },
         ...options,
     });
@@ -164,6 +219,11 @@ export const useDeleteReview = (
                 (old) => old ? old.filter(review => review._id !== id) : []
             );
             queryClient.removeQueries({ queryKey: queryKeys.review(id) });
+            
+            // Invalidate the myReviews cache
+            queryClient.invalidateQueries({
+                queryKey: [queryKeys.myReviews]
+            });
         },
         ...options,
     });

@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const employeeId = params.id;
+    const employeeId = await params.id;
     
     const supabase = await createClient();
     

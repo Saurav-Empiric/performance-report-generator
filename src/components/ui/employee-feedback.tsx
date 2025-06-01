@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateReview, useReviewsByEmployee, useEmployee } from "@/hooks";
 import { Send, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { UseQueryOptions } from "@tanstack/react-query";
+import { Review } from "@/types";
 
 interface EmployeeFeedbackProps {
   employeeId: string;
@@ -42,7 +44,9 @@ export function EmployeeFeedback({
     isLoading,
     isError,
     refetch
-  } = useReviewsByEmployee(employeeId);
+  } = useReviewsByEmployee(employeeId, {
+    enabled: !!employeeId
+  } as UseQueryOptions<Review[]>);
 
   // Create review mutation
   const { mutate: submitReview, isPending: isSubmitting } = useCreateReview({

@@ -37,6 +37,24 @@ export const fetchReviewById = async (id: string): Promise<Review> => {
   return response.json();
 };
 
+// Fetch review given by current user for a specific employee
+export const fetchEmployeeReviewByCurrentUser = async (employeeId: string): Promise<any> => {
+  const response = await fetch(`/api/employees/${employeeId}/reviews`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch employee review by current user');
+  }
+  return response.json();
+};
+
+// Fetch all reviews written by the current user
+export const fetchMyReviews = async (): Promise<any> => {
+  const response = await fetch('/api/reviews/my');
+  if (!response.ok) {
+    throw new Error('Failed to fetch my reviews');
+  }
+  return response.json();
+};
+
 // Create a new review
 export const createReview = async (review: Omit<Review, '_id'>): Promise<Review> => {
   const response = await fetch('/api/reviews', {

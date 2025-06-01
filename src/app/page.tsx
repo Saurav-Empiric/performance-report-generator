@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useReviews, useAssignedEmployees } from "@/hooks";
+import { useAssignedEmployees, useReviewsByReviewer } from "@/hooks";
 import { Sidebar } from "@/components/ui/sidebar";
 import { EmployeeFeedback } from "@/components/ui/employee-feedback";
 import { MyReviews } from "@/components/ui/my-reviews";
@@ -16,15 +16,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RefreshCw } from "lucide-react";
-import { Employee } from "@/types";
+import { RefreshCw, LogOut } from "lucide-react";
+import { Employee, Review } from "@/types";
+import { UseQueryOptions } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function Home() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [viewMyReviews, setViewMyReviews] = useState(false);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   // We don't need to set current user ID manually anymore - it comes from auth
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  
+  const router = useRouter();
+  const supabase = createClient();
 
   // Use the new assigned employees hook for authenticated employee view
   const {
@@ -45,12 +53,36 @@ export default function Home() {
     }
   }, [currentEmployee, currentUserId]);
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success("Logged out successfully");
+      router.push("/login");
+      router.refresh();
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      toast.error(error.message || "Failed to log out");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Only fetch reviews by the current reviewer when viewing "My Reviews"
   const {
-    data: reviews = [],
+    data: myReviews = [],
     isLoading: reviewsLoading,
     isError: reviewsError,
     refetch: refetchReviews
-  } = useReviews();
+  } = useReviewsByReviewer(
+    currentUserId || "", 
+    { enabled: false } as UseQueryOptions<Review[]>
+  );
 
   const handleSelectEmployee = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -64,7 +96,9 @@ export default function Home() {
 
   const handleRetry = () => {
     refetchAssigned();
-    refetchReviews();
+    if (viewMyReviews && currentUserId) {
+      refetchReviews();
+    }
     setErrorDialogOpen(false);
   };
 
@@ -75,7 +109,7 @@ export default function Home() {
   }
 
   // loading state
-  const isLoading = assignedLoading || reviewsLoading;
+  const isLoading = assignedLoading || (viewMyReviews && reviewsLoading);
 
   return (
     <main className="flex flex-col h-screen overflow-hidden bg-gray-50">
@@ -99,12 +133,26 @@ export default function Home() {
                 className="gap-1"
                 onClick={() => {
                   refetchAssigned();
-                  refetchReviews();
+                  if (viewMyReviews && currentUserId) {
+                    refetchReviews();
+                  }
                 }}
                 disabled={isLoading}
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Refresh</span>
+              </Button>
+              
+              {/* Logout Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1 text-red-600 hover:bg-red-50 hover:text-red-700"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                <LogOut className={`h-4 w-4 ${isLoggingOut ? 'animate-bounce' : ''}`} />
+                <span className="hidden sm:inline">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
               </Button>
             </div>
           </div>
@@ -151,7 +199,7 @@ export default function Home() {
                 </div>
               </div>
             ) : viewMyReviews ? (
-              <MyReviews reviews={reviews as any} />
+              <MyReviews />
             ) : (
               selectedEmployee && (
                 <EmployeeFeedback
