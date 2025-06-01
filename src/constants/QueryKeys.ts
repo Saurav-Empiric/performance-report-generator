@@ -1,6 +1,7 @@
 // Query keys
 const queryKeys = {
     employees: 'employees',
+    assignedEmployees: 'assignedEmployees',
     employee: (id: string) => ['employee', id],
     reviews: 'reviews',
     reviewsByEmployee: (employeeId: string) => ['reviews', 'employee', employeeId],

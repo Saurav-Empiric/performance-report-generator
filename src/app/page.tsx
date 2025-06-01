@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useEmployees, useReviews } from "@/hooks";
+import { useState, useEffect } from "react";
+import { useReviews, useAssignedEmployees } from "@/hooks";
 import { Sidebar } from "@/components/ui/sidebar";
 import { EmployeeFeedback } from "@/components/ui/employee-feedback";
 import { MyReviews } from "@/components/ui/my-reviews";
@@ -23,17 +23,27 @@ export default function Home() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [viewMyReviews, setViewMyReviews] = useState(false);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
-  // For demo purposes, use a state for current user ID
-  // this will come from authentication
+  // We don't need to set current user ID manually anymore - it comes from auth
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
 
-  // TanStack Query hooks for data fetching
+  // Use the new assigned employees hook for authenticated employee view
   const {
-    data: employees = [],
-    isLoading: employeesLoading,
-    isError: employeesError,
-    refetch: refetchEmployees
-  } = useEmployees();
+    data: assignedData,
+    isLoading: assignedLoading,
+    isError: assignedError,
+    refetch: refetchAssigned
+  } = useAssignedEmployees();
+
+  // Extract current employee and assigned reviewees from the response
+  const currentEmployee = assignedData?.currentEmployee;
+  const employees = assignedData?.assignedReviewees || [];
+
+  // Set current user ID from the authenticated employee data
+  useEffect(() => {
+    if (currentEmployee && !currentUserId) {
+      setCurrentUserId(currentEmployee._id);
+    }
+  }, [currentEmployee, currentUserId]);
 
   const {
     data: reviews = [],
@@ -41,11 +51,6 @@ export default function Home() {
     isError: reviewsError,
     refetch: refetchReviews
   } = useReviews();
-
-  // If don't have a current user ID and have employees, set the first one as current user
-  if (!currentUserId && employees.length > 0 && !employeesLoading) {
-    setCurrentUserId(employees[0]._id);
-  }
 
   const handleSelectEmployee = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -58,19 +63,19 @@ export default function Home() {
   };
 
   const handleRetry = () => {
-    refetchEmployees();
+    refetchAssigned();
     refetchReviews();
     setErrorDialogOpen(false);
   };
 
   // Show error dialog if any fetch fails
-  const hasError = employeesError || reviewsError;
+  const hasError = assignedError || reviewsError;
   if (hasError && !errorDialogOpen) {
     setErrorDialogOpen(true);
   }
 
   // loading state
-  const isLoading = employeesLoading || reviewsLoading;
+  const isLoading = assignedLoading || reviewsLoading;
 
   return (
     <main className="flex flex-col h-screen overflow-hidden bg-gray-50">
@@ -82,27 +87,18 @@ export default function Home() {
               Employee Performance Feedback
             </h1>
             <div className="flex items-center gap-2">
-              {/* User selection dropdown for demo purposes */}
-              {employees.length > 0 && (
-                <select
-                  className="border rounded p-1 text-sm"
-                  value={currentUserId}
-                  onChange={(e) => setCurrentUserId(e.target.value)}
-                >
-                  <option value="">Select Current User</option>
-                  {employees.map((emp) => (
-                    <option key={emp._id} value={emp._id}>
-                      {emp.name}
-                    </option>
-                  ))}
-                </select>
+              {/* No longer need user selection dropdown as we're using auth */}
+              {currentEmployee && (
+                <div className="text-sm font-medium">
+                  Welcome, {currentEmployee.name}
+                </div>
               )}
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-1"
                 onClick={() => {
-                  refetchEmployees();
+                  refetchAssigned();
                   refetchReviews();
                 }}
                 disabled={isLoading}

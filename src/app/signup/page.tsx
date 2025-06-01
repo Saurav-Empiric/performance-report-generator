@@ -26,12 +26,12 @@ export default function EmployeeSignup() {
   const supabase = createClient();
   
   // Redirect if no email or organization_id in URL
-  // useEffect(() => {
-  //   if (!email || !organization_id) {
-  //     toast.error('Invalid invitation link');
-  //     router.push('/login');
-  //   }
-  // }, [email, organization_id, router]);
+  useEffect(() => {
+    if (!email || !organization_id) {
+      toast.error('Invalid invitation link');
+      router.push('/login');
+    }
+  }, [email, organization_id, router]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,45 +50,44 @@ export default function EmployeeSignup() {
     setIsLoading(true);
     
     try {
-      // Create user account with employee role
-      const { data, error: signupError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role: 'employee',
-            name,
-            organization_id
-          },
-          emailRedirectTo: `${window.location.origin}/login`
-        }
+      // Set the password using our API endpoint
+      const response = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       });
       
-      if (signupError) {
-        throw signupError;
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to set password');
       }
       
-      if (!data.user) {
-        throw new Error('Failed to create account');
+      // Update the employee record with the user_id
+      if (data.userId) {
+        // Find the existing employee record
+        const { data: employee, error: findError } = await supabase
+          .from('employees')
+          .select('id, user_id')
+          .eq('email', email)
+          .eq('organization_id', organization_id)
+          .single();
+        
+        if (!findError && employee && !employee.user_id) {
+          // Update the employee record with the user_id
+          await supabase
+            .from('employees')
+            .update({ user_id: data.userId })
+            .eq('id', employee.id);
+        }
       }
       
-      // Create employee record in employees table
-      const { error: employeeError } = await supabase
-        .from('employees')
-        .insert({
-          name,
-          role,
-          email,
-          department_id: department_id,
-          organization_id
-        });
-      
-      if (employeeError) {
-        console.error('Error creating employee record:', employeeError);
-        // Continue anyway as the auth account was created
-      }
-      
-      toast.success('Account created successfully! Please check your email to verify your account.');
+      toast.success('Account created successfully! Please login to continue.');
       router.push('/login');
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -106,7 +105,7 @@ export default function EmployeeSignup() {
             Complete Your Account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Create your employee account
+            Set your password to access the system
           </p>
         </div>
         
@@ -171,7 +170,7 @@ export default function EmployeeSignup() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
+              {isLoading ? 'Setting Password...' : 'Set Password & Login'}
             </Button>
           </form>
         </div>

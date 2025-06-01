@@ -84,17 +84,6 @@ export function MyReviews({ reviews }: MyReviewsProps) {
     });
   };
 
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      "Performance": "bg-blue-100 text-blue-800",
-      "Leadership": "bg-purple-100 text-purple-800",
-      "Teamwork": "bg-green-100 text-green-800",
-      "Communication": "bg-yellow-100 text-yellow-800",
-      "Technical Skills": "bg-indigo-100 text-indigo-800",
-      "Attitude": "bg-pink-100 text-pink-800"
-    };
-    return colors[category] || "bg-gray-100 text-gray-800";
-  };
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -146,14 +135,7 @@ export function MyReviews({ reviews }: MyReviewsProps) {
                             <div className="flex-1">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                 <CardTitle className="text-lg">{getEmployeeName(review.targetEmployee)}</CardTitle>
-                                {review.category && (
-                                  <Badge
-                                    className={`${getCategoryColor(review.category)} mt-1 sm:mt-0`}
-                                    variant="outline"
-                                  >
-                                    {review.category}
-                                  </Badge>
-                                )}
+  
                               </div>
                               <div className="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 gap-1 sm:gap-2">
                                 <p>{getEmployeeRole(review.targetEmployee)}</p>

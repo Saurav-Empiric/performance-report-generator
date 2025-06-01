@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/db';
-import Review from '@/lib/models/review';
-import mongoose from 'mongoose';
+import { createClient } from '@/lib/supabase/server';
 
-// Helper to check if the ID is valid
-function isValidObjectId(id: string) {
-  return mongoose.Types.ObjectId.isValid(id);
+// Define types for Supabase responses
+interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  department_id: string;
 }
 
 // GET a specific review
@@ -16,26 +17,78 @@ export async function GET(
   try {
     const id = params.id;
     
-    if (!isValidObjectId(id)) {
+    const supabase = await createClient();
+    
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
       return NextResponse.json(
-        { error: 'Invalid review ID format' },
-        { status: 400 }
+        { error: 'Authentication required' },
+        { status: 401 }
       );
     }
     
-    await connectToDatabase();
-    const review = await Review.findById(id)
-      .populate('targetEmployee', 'name role')
-      .populate('reviewedBy', 'name role');
+    const { data: review, error } = await supabase
+      .from('reviews')
+      .select(`
+        id,
+        content,
+        created_at,
+        target_employee:target_employee_id (
+          id,
+          name,
+          role,
+          department_id
+        ),
+        reviewer:reviewed_by_id (
+          id,
+          name,
+          role,
+          department_id
+        )
+      `)
+      .eq('id', id)
+      .single();
     
-    if (!review) {
+    if (error) {
+      console.error('Error fetching review:', error);
+      if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Review not found' },
+          { status: 404 }
+        );
+      }
       return NextResponse.json(
-        { error: 'Review not found' },
-        { status: 404 }
+        { error: 'Failed to fetch review' },
+        { status: 500 }
       );
     }
     
-    return NextResponse.json(review, { status: 200 });
+    // Handle the type conversion safely
+    const targetEmployee = review.target_employee as unknown as Employee;
+    const reviewerEmployee = review.reviewer as unknown as Employee | null;
+    
+    // Format the response to match the expected structure
+    const formattedReview = {
+      id: review.id,
+      content: review.content,
+      timestamp: review.created_at,
+      targetEmployee: targetEmployee ? {
+        id: targetEmployee.id,
+        name: targetEmployee.name,
+        role: targetEmployee.role,
+      } : null,
+      reviewedBy: reviewerEmployee ? {
+        id: reviewerEmployee.id,
+        name: reviewerEmployee.name,
+        role: reviewerEmployee.role,
+      } : null,
+      createdAt: review.created_at
+    };
+    
+    return NextResponse.json(formattedReview, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch review:', error);
     return NextResponse.json(
@@ -52,48 +105,154 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    
-    if (!isValidObjectId(id)) {
-      return NextResponse.json(
-        { error: 'Invalid review ID format' },
-        { status: 400 }
-      );
-    }
-    
     const body = await req.json();
     
-    // Validate employee IDs if they are being updated
-    if (body.targetEmployee && !isValidObjectId(body.targetEmployee)) {
+    const supabase = await createClient();
+    
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
       return NextResponse.json(
-        { error: 'Invalid targetEmployee ID format' },
-        { status: 400 }
+        { error: 'Authentication required' },
+        { status: 401 }
       );
     }
     
-    if (body.reviewedBy && !isValidObjectId(body.reviewedBy)) {
+    // Get the employee profile to check if they're the author of the review
+    const { data: currentEmployee, error: employeeError } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('email', user.email)
+      .single();
+    
+    if (employeeError || !currentEmployee) {
+      console.error('Error fetching employee:', employeeError);
       return NextResponse.json(
-        { error: 'Invalid reviewedBy ID format' },
-        { status: 400 }
+        { error: 'Employee profile not found' },
+        { status: 404 }
       );
     }
     
-    await connectToDatabase();
-    const updatedReview = await Review.findByIdAndUpdate(
-      id,
-      { $set: body },
-      { new: true, runValidators: true }
-    )
-      .populate('targetEmployee', 'name role')
-      .populate('reviewedBy', 'name role');
+    // First check if the review exists and belongs to the current employee
+    const { data: existingReview, error: reviewError } = await supabase
+      .from('reviews')
+      .select('id, reviewed_by_id, target_employee_id')
+      .eq('id', id)
+      .single();
     
-    if (!updatedReview) {
+    if (reviewError) {
+      console.error('Error fetching review:', reviewError);
       return NextResponse.json(
         { error: 'Review not found' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json(updatedReview, { status: 200 });
+    // Verify that the current employee is the author of the review
+    if (existingReview.reviewed_by_id !== currentEmployee.id) {
+      return NextResponse.json(
+        { error: 'You are not authorized to update this review' },
+        { status: 403 }
+      );
+    }
+    
+    // Check that the reviewer is still authorized to review this employee
+    const { data: assignmentCheck, error: assignmentError } = await supabase
+      .from('employee_review_to')
+      .select('*')
+      .eq('reviewer_id', currentEmployee.id)
+      .eq('reviewee_id', existingReview.target_employee_id);
+    
+    if (assignmentError) {
+      console.error('Error checking reviewer assignment:', assignmentError);
+      return NextResponse.json(
+        { error: 'Failed to verify reviewer authorization' },
+        { status: 500 }
+      );
+    }
+    
+    if (!assignmentCheck || assignmentCheck.length === 0) {
+      return NextResponse.json(
+        { error: 'You are no longer authorized to review this employee' },
+        { status: 403 }
+      );
+    }
+    
+    // Prepare update data
+    const updateData: any = {};
+    if (body.content) updateData.content = body.content;
+    
+    // Update the review
+    const { data: updatedReview, error: updateError } = await supabase
+      .from('reviews')
+      .update(updateData)
+      .eq('id', id)
+      .eq('reviewed_by_id', currentEmployee.id) // Ensure the employee can only update their own reviews
+      .select(`
+        id,
+        content,
+        created_at,
+        target_employee:target_employee_id (
+          id,
+          name,
+          role,
+          department_id
+        ),
+        reviewer:reviewed_by_id (
+          id,
+          name,
+          role,
+          department_id
+        )
+      `)
+      .single();
+    
+    if (updateError) {
+      console.error('Error updating review:', updateError);
+      if (updateError.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Review not found or you do not have permission to update it' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json(
+        { error: 'Failed to update review' },
+        { status: 500 }
+      );
+    }
+    
+    if (!updatedReview) {
+      return NextResponse.json(
+        { error: 'No review was updated' },
+        { status: 404 }
+      );
+    }
+    
+    // Handle the type conversion safely
+    const targetEmployee = updatedReview.target_employee as unknown as Employee;
+    const reviewerEmployee = updatedReview.reviewer as unknown as Employee | null;
+    
+    // Format the response to match the expected structure
+    const formattedReview = {
+      id: updatedReview.id,
+      content: updatedReview.content,
+      timestamp: updatedReview.created_at,
+      targetEmployee: targetEmployee ? {
+        id: targetEmployee.id,
+        name: targetEmployee.name,
+        role: targetEmployee.role,
+      } : null,
+      reviewedBy: reviewerEmployee ? {
+        id: reviewerEmployee.id,
+        name: reviewerEmployee.name,
+        role: reviewerEmployee.role,
+      } : null,
+      createdAt: updatedReview.created_at
+    };
+    
+    return NextResponse.json(formattedReview, { status: 200 });
   } catch (error) {
     console.error('Failed to update review:', error);
     return NextResponse.json(
@@ -111,20 +270,46 @@ export async function DELETE(
   try {
     const id = params.id;
     
-    if (!isValidObjectId(id)) {
+    const supabase = await createClient();
+    
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
       return NextResponse.json(
-        { error: 'Invalid review ID format' },
-        { status: 400 }
+        { error: 'Authentication required' },
+        { status: 401 }
       );
     }
     
-    await connectToDatabase();
-    const deletedReview = await Review.findByIdAndDelete(id);
+    // Get the employee profile to check if they're the author of the review
+    const { data: currentEmployee, error: employeeError } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('email', user.email)
+      .single();
     
-    if (!deletedReview) {
+    if (employeeError || !currentEmployee) {
+      console.error('Error fetching employee:', employeeError);
       return NextResponse.json(
-        { error: 'Review not found' },
+        { error: 'Employee profile not found' },
         { status: 404 }
+      );
+    }
+    
+    // Delete the review
+    const { error: deleteError } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', id)
+      .eq('reviewed_by_id', currentEmployee.id); // Ensure the employee can only delete their own reviews
+    
+    if (deleteError) {
+      console.error('Error deleting review:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete review' },
+        { status: 500 }
       );
     }
     

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import supabaseAdmin from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Send invitation email
-    const { error: emailError } = await supabase.auth.admin.inviteUserByEmail(email, {
+    const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: {
         organization_id: orgData.id,
         name: name,
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
     if (emailError) {
       console.error('Error sending invitation email:', emailError);
       return NextResponse.json(
-        { error: 'Failed to send invitation email' },
+        { error: emailError.message },
         { status: 500 }
       );
     }

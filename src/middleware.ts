@@ -44,9 +44,17 @@ export async function middleware(req: NextRequest) {
         url.pathname.startsWith('/_next') ||
         url.pathname === '/favicon.ico') {
 
-        // If accessing login/signup while already authenticated as employee
-        if ((url.pathname === '/login' || url.pathname === '/signup') &&
-            user?.user_metadata?.role === 'employee') {
+        // If accessing login while already authenticated as employee
+        if (url.pathname === '/login' && user?.user_metadata?.role === 'employee') {
+            url.pathname = '/';
+            return NextResponse.redirect(url);
+        }
+
+        // For signup, only redirect if authenticated AND there are no invitation params
+        if (url.pathname === '/signup' &&
+            user?.user_metadata?.role === 'employee' &&
+            !url.searchParams.has('organization_id') &&
+            !url.searchParams.has('email')) {
             url.pathname = '/';
             return NextResponse.redirect(url);
         }

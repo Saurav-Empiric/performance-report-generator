@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCreateEmployee, useDeleteEmployee, useEmployees, useOrganization } from "@/hooks";
+import { useCreateEmployee, useDeleteEmployee, useEmployees, useInviteEmployee, useOrganization } from "@/hooks";
 import { Building, CheckCircle2, Loader2, Mail, Search, Table, Trash2, User, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ export default function EmployeesPage() {
 
   const { mutate: createEmployee, isPending: isCreating } = useCreateEmployee();
   const { mutate: deleteEmployee, isPending: isDeleting } = useDeleteEmployee();
+  const { mutate: inviteEmployee, isPending: isInviting } = useInviteEmployee();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("directory");
@@ -72,7 +73,7 @@ export default function EmployeesPage() {
       return;
     }
 
-    // Add new employee via mutation
+    // create the employee record
     createEmployee({
       name: newEmployee.name,
       email: newEmployee.email,
@@ -80,8 +81,23 @@ export default function EmployeesPage() {
       department: newEmployee.department,
       assignedReviewees: newEmployee.assignedReviewees
     }, {
-      onSuccess: () => {
-        // Reset form
+      onSuccess: (newEmployeeData) => {
+        // Always send invitation email
+        inviteEmployee({
+          email: newEmployee.email,
+          name: newEmployee.name,
+          role: newEmployee.role,
+          department_id: newEmployee.department
+        }, {
+          onSuccess: (response) => {
+            toast.success(response.message || "Employee added and invitation sent");
+          },
+          onError: (error) => {
+            toast.error(`Employee added but failed to send invitation: ${error.message}`);
+          }
+        });
+
+        // Reset form and switch to directory tab
         setNewEmployee({
           name: "",
           email: "",
@@ -89,9 +105,7 @@ export default function EmployeesPage() {
           department: "",
           assignedReviewees: [],
         });
-        // Switch to directory tab and show toast
         setActiveTab("directory");
-        toast.success("Employee added successfully");
       },
       onError: (error) => {
         toast.error(`Failed to add employee: ${error.message}`);
@@ -293,7 +307,7 @@ export default function EmployeesPage() {
                       className="pl-8"
                       value={newEmployee.name}
                       onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                      disabled={isCreating}
+                      disabled={isCreating || isInviting}
                     />
                   </div>
                 </div>
@@ -309,7 +323,7 @@ export default function EmployeesPage() {
                       className="pl-8"
                       value={newEmployee.email}
                       onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                      disabled={isCreating}
+                      disabled={isCreating || isInviting}
                     />
                   </div>
                 </div>
@@ -321,7 +335,7 @@ export default function EmployeesPage() {
                     placeholder="Software Engineer"
                     value={newEmployee.role}
                     onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
-                    disabled={isCreating}
+                    disabled={isCreating || isInviting}
                   />
                 </div>
 
@@ -344,7 +358,7 @@ export default function EmployeesPage() {
                       </div>
                     ) : (
                       <Select
-                        disabled={isCreating}
+                        disabled={isCreating || isInviting}
                         value={newEmployee.department}
                         onValueChange={(value) => setNewEmployee({ ...newEmployee, department: value })}
                       >
@@ -366,6 +380,15 @@ export default function EmployeesPage() {
                         </SelectContent>
                       </Select>
                     )}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      The employee will be added to the database and an invitation email will be sent automatically 
+                      with instructions to create their password and access the system.
+                    </p>
                   </div>
                 </div>
 
@@ -402,7 +425,7 @@ export default function EmployeesPage() {
                                   });
                                 }
                               }}
-                              disabled={isCreating}
+                              disabled={isCreating || isInviting}
                             />
                             <label
                               htmlFor={`employee-${employee._id}`}
@@ -431,24 +454,24 @@ export default function EmployeesPage() {
               <Button
                 variant="outline"
                 onClick={() => setActiveTab("directory")}
-                disabled={isCreating}
+                disabled={isCreating || isInviting}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleAddEmployee}
                 className="gap-2"
-                disabled={isCreating || isLoadingOrganization || departments.length === 0}
+                disabled={isCreating || isInviting || isLoadingOrganization || departments.length === 0}
               >
-                {isCreating ? (
+                {isCreating || isInviting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Adding...
+                    {isCreating ? 'Adding Employee...' : 'Sending Invite...'}
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="h-4 w-4" />
-                    Add Employee
+                    Add Employee & Send Invite
                   </>
                 )}
               </Button>

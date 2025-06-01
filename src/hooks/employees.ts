@@ -4,6 +4,8 @@ import {
     deleteEmployee,
     fetchEmployeeById,
     fetchEmployees,
+    fetchAssignedEmployees,
+    inviteEmployee,
     updateEmployee,
 } from '@/services/employee.services';
 import { Employee } from '@/types';
@@ -20,6 +22,15 @@ export const useEmployees = (options?: UseQueryOptions<Employee[]>) => {
     return useQuery({
         queryKey: [queryKeys.employees],
         queryFn: fetchEmployees,
+        ...options,
+    });
+};
+
+// Hook for authenticated employees to get their assigned reviewees
+export const useAssignedEmployees = (options?: UseQueryOptions<{currentEmployee: Employee, assignedReviewees: Employee[]}>) => {
+    return useQuery({
+        queryKey: [queryKeys.assignedEmployees],
+        queryFn: fetchAssignedEmployees,
         ...options,
     });
 };
@@ -53,6 +64,24 @@ export const useCreateEmployee = (
                 newEmployee
             );
         },
+        ...options,
+    });
+};
+
+export const useInviteEmployee = (
+    options?: UseMutationOptions<
+        { message: string },
+        Error,
+        {
+            email: string;
+            name: string;
+            role: string;
+            department_id?: string;
+        }
+    >
+) => {
+    return useMutation({
+        mutationFn: inviteEmployee,
         ...options,
     });
 };
