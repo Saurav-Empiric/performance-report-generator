@@ -58,14 +58,23 @@ export const useReview = (id: string, options?: UseQueryOptions<Review>) => {
     });
 };
 
-// Hook to fetch review given by current user for a specific employee
+// Hook to fetch reviews given by current user for a specific employee
 export const useEmployeeReviewByCurrentUser = (
     employeeId: string,
-    options?: UseQueryOptions<any>
+    currentUserId?: string,
+    options?: UseQueryOptions<{
+      reviews: {
+        id: string;
+        content: string;
+        timestamp: string;
+      }[];
+      hasReviewed: boolean;
+    }>
 ) => {
     return useQuery({
-        queryKey: queryKeys.employeeReviewByCurrentUser(employeeId),
+        queryKey: queryKeys.employeeReviewByCurrentUser(employeeId, currentUserId),
         queryFn: () => fetchEmployeeReviewByCurrentUser(employeeId),
+        enabled: !!employeeId,
         ...options,
     });
 };
@@ -227,4 +236,11 @@ export const useDeleteReview = (
         },
         ...options,
     });
+};
+
+// Function to invalidate employee review cache
+export const invalidateEmployeeReviewCache = (queryClient: any) => {
+  queryClient.invalidateQueries({
+    queryKey: ['employeeReviewByCurrentUser'],
+  });
 }; 

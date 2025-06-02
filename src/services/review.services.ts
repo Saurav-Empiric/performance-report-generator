@@ -37,11 +37,20 @@ export const fetchReviewById = async (id: string): Promise<Review> => {
   return response.json();
 };
 
-// Fetch review given by current user for a specific employee
-export const fetchEmployeeReviewByCurrentUser = async (employeeId: string): Promise<any> => {
-  const response = await fetch(`/api/employees/${employeeId}/reviews`);
+// Fetch reviews given by current user for a specific employee
+export const fetchEmployeeReviewByCurrentUser = async (employeeId: string): Promise<{
+  reviews: {
+    id: string;
+    content: string;
+    timestamp: string;
+  }[];
+  hasReviewed: boolean;
+}> => {
+  // Add cache busting parameter to prevent browser caching
+  const timestamp = new Date().getTime();
+  const response = await fetch(`/api/employees/${employeeId}/reviews?_=${timestamp}`);
   if (!response.ok) {
-    throw new Error('Failed to fetch employee review by current user');
+    throw new Error('Failed to fetch employee reviews by current user');
   }
   return response.json();
 };
