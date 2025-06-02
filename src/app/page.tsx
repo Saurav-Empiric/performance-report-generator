@@ -67,7 +67,7 @@ export default function Home() {
       router.refresh();
     } catch (error: any) {
       console.error("Logout error:", error);
-      toast.error(error.message || "Failed to log out");
+      toast.error(error.message ?? "Failed to log out");
     } finally {
       setIsLoggingOut(false);
     }
@@ -80,7 +80,7 @@ export default function Home() {
     isError: reviewsError,
     refetch: refetchReviews
   } = useReviewsByReviewer(
-    currentUserId || "", 
+    currentUserId ?? "", 
     { enabled: false } as UseQueryOptions<Review[]>
   );
 

@@ -8,7 +8,7 @@ const queryKeys = {
     reviewsByReviewer: (reviewerId: string) => ['reviews', 'reviewer', reviewerId],
     review: (id: string) => ['review', id],
     employeeReviewByCurrentUser: (employeeId: string, currentUserId?: string) => 
-      ['employeeReviewByCurrentUser', employeeId, currentUserId || 'anonymous'],
+      ['employeeReviewByCurrentUser', employeeId, currentUserId ?? 'anonymous'],
     myReviews: 'myReviews',
     reports: 'reports',
     reportsByEmployee: (employeeId: string) => ['reports', employeeId],

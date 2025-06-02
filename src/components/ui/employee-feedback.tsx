@@ -23,7 +23,7 @@ export function EmployeeFeedback({
   employeeRole,
   employeeDepartment,
   currentUserId
-}: EmployeeFeedbackProps) {
+}: Readonly<EmployeeFeedbackProps>) {
   const [newReview, setNewReview] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
