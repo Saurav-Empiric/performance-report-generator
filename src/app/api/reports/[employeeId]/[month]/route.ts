@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// GET reports for an employee
-export async function GET(req: NextRequest) {
+// GET specific report for employee and month
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { employeeId: string; month: string } }
+) {
   try {
-    const { searchParams } = new URL(req.url);
-    const employeeId = searchParams.get('employeeId');
+    const { employeeId, month } = await params;
     
-    if (!employeeId) {
+    if (!employeeId || !month) {
       return NextResponse.json(
-        { error: 'Employee ID is required' },
+        { error: 'Employee ID and month are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate month format
+    const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
+    if (!monthRegex.test(month)) {
+      return NextResponse.json(
+        { error: 'Invalid month format. Use YYYY-MM' },
         { status: 400 }
       );
     }
@@ -65,23 +76,29 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    // Fetch all reports for the employee
-    const { data: reports, error: reportsError } = await supabase
+    // Fetch the specific report for the employee and month
+    const { data: report, error: reportError } = await supabase
       .from('reports')
       .select('*')
       .eq('employee_id', employeeId)
-      .order('month', { ascending: false });
+      .eq('month', month)
+      .single();
     
-    if (reportsError) {
-      console.error('Error fetching reports:', reportsError);
+    if (reportError) {
+      if (reportError.code === 'PGRST116') {
+        // No report found - return null instead of error
+        return NextResponse.json(null, { status: 200 });
+      }
+      
+      console.error('Error fetching report:', reportError);
       return NextResponse.json(
-        { error: 'Failed to fetch reports' },
+        { error: 'Failed to fetch report' },
         { status: 500 }
       );
     }
     
     // Format the response to match the expected structure
-    const formattedReports = reports.map(report => ({
+    const formattedReport = {
       _id: report.id,
       employeeId: report.employee_id,
       month: report.month,
@@ -90,14 +107,14 @@ export async function GET(req: NextRequest) {
       qualities: report.qualities,
       summary: report.summary,
       createdAt: report.created_at,
-      updatedAt: report.created_at // Supabase doesn't have separate updatedAt
-    }));
+      updatedAt: report.created_at
+    };
     
-    return NextResponse.json(formattedReports, { status: 200 });
+    return NextResponse.json(formattedReport, { status: 200 });
   } catch (error) {
-    console.error('Failed to fetch reports:', error);
+    console.error('Failed to fetch report:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch reports' },
+      { error: 'Failed to fetch report' },
       { status: 500 }
     );
   }

@@ -29,4 +29,16 @@ export interface Organization {
   phone: string;
   address: string;
   departments: string[];
-} 
+}
+
+export interface PerformanceReport {
+  _id?: string;
+  employeeId: string;
+  month: string;
+  ranking: number;
+  improvements: string[];
+  qualities: string[];
+  summary: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}

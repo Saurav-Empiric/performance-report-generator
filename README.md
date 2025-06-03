@@ -1,21 +1,23 @@
 # Employee Performance Feedback System
 
-A Next.js application for managing employee performance feedback and reviews, built with MongoDB and TanStack Query.
+A Next.js application for managing employee performance feedback and reviews, built with Supabase and TanStack Query.
 
 ## Features
 
 - View employees and their details
 - Provide performance feedback for employees
 - View reviews given to employees
+- Generate AI-powered performance reports
+- Organization authentication and management
 - Optimized data fetching with TanStack Query
-- MongoDB database for data persistence
+- Supabase database for data persistence
 
 ## Setup
 
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB database (Atlas or self-hosted)
+- Supabase project
 
 ### Installation
 
@@ -30,10 +32,13 @@ cd next-performace-generator
 npm install
 ```
 
-3. Create a `.env.local` file in the root directory with your MongoDB connection string and Gemini API key:
+3. Create a `.env.local` file in the root directory with your Supabase credentials and Gemini API key:
 ```
-MONGODB_URI=mongodb+srv://your-username:your-password@your-cluster.mongodb.net/performance-feedback?retryWrites=true&w=majority
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 GEMINI_API_KEY=your_gemini_api_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 4. Run the development server:
@@ -43,59 +48,115 @@ npm run dev
 
 ## Database Structure
 
-The application uses MongoDB with the following collections:
+The application uses Supabase with the following tables:
 
-### Employees Collection
-```
-{
-  _id: ObjectId,
-  name: String,
-  role: String,
-  email: String (optional),
-  department: String (optional),
-  hireDate: Date (optional),
-  createdAt: Date,
-  updatedAt: Date
-}
+### Organization Table
+```sql
+create table public.organization (
+  id uuid not null default gen_random_uuid (),
+  name character varying not null,
+  email character varying not null,
+  phone character varying null,
+  address character varying null,
+  user_id uuid not null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint organization_pkey primary key (id),
+  constraint organization_user_id_fkey foreign key (user_id) references auth.users (id) on delete cascade
+);
 ```
 
-### Review Collection
+### Employees Table
+```sql
+create table public.employees (
+  id uuid not null default gen_random_uuid (),
+  name character varying not null,
+  role character varying not null,
+  email character varying not null,
+  department_id uuid null,
+  organization_id uuid not null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint employees_pkey primary key (id),
+  constraint employees_organization_id_fkey foreign key (organization_id) references organization (id) on delete cascade,
+  constraint employees_department_id_fkey foreign key (department_id) references departments (id) on delete set null
+);
 ```
-{
-  _id: ObjectId,
-  content: String,
-  timestamp: Date,
-  targetEmployee: ObjectId (references Employee),
-  reviewedBy: ObjectId (references Employee, optional),
-  rating: Number (1-5, optional),
-  category: String (enum: 'Performance', 'Behavior', 'Skills', 'General'),
-  createdAt: Date,
-  updatedAt: Date
-}
+
+### Reviews Table
+```sql
+create table public.reviews (
+  id uuid not null default gen_random_uuid (),
+  content text not null,
+  target_employee_id uuid not null,
+  reviewed_by_id uuid not null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint reviews_pkey primary key (id),
+  constraint reviews_target_employee_id_fkey foreign key (target_employee_id) references employees (id) on delete cascade,
+  constraint reviews_reviewed_by_id_fkey foreign key (reviewed_by_id) references employees (id) on delete cascade
+);
+```
+
+### Reports Table
+```sql
+create table public.reports (
+  id uuid not null default gen_random_uuid (),
+  employee_id uuid not null,
+  month character varying(7) not null,
+  ranking integer not null,
+  improvements text[] null default '{}'::text[],
+  qualities text[] null default '{}'::text[],
+  summary text not null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint reports_pkey primary key (id),
+  constraint unique_employee_month unique (employee_id, month),
+  constraint reports_employee_id_fkey foreign key (employee_id) references employees (id) on delete cascade,
+  constraint reports_month_check check (((month)::text ~ '^\d{4}-(0[1-9]|1[0-2])$'::text)),
+  constraint reports_ranking_check check (
+    (
+      (ranking >= 0)
+      and (ranking <= 10)
+    )
+  )
+);
 ```
 
 ## API Routes
+
+### Authentication
+- `POST /api/auth/signin` - Sign in user
+- `POST /api/auth/signup` - Sign up user
+- `POST /api/auth/signout` - Sign out user
+- `GET /api/auth/user` - Get current user
+
+### Organization
+- `GET /api/organization` - Get organization details
+- `POST /api/organization/save` - Save organization details
+- `PUT /api/organization` - Update organization settings
 
 ### Employees
 - `GET /api/employees` - Get all employees
 - `POST /api/employees` - Create a new employee
 - `GET /api/employees/:id` - Get a specific employee
-- `PUT /api/employees/:id` - Update an employee
 - `DELETE /api/employees/:id` - Delete an employee
+- `GET /api/employees/assigned` - Get assigned employees for reviewer
+- `POST /api/employees/invite` - Invite new employee
 
 ### Reviews
 - `GET /api/reviews` - Get all reviews (with optional query params for filtering)
 - `POST /api/reviews` - Create a new review
 - `GET /api/reviews/:id` - Get a specific review
-- `PUT /api/reviews/:id` - Update a review
-- `DELETE /api/reviews/:id` - Delete a review
+- `GET /api/reviews/my` - Get reviews written by current user
+
+### Reports
+- `GET /api/reports` - Get reports for an employee
+- `POST /api/reports/generate` - Generate a new report (or return existing one)
 
 ## Technologies Used
 
 - Next.js 15
 - React 19
-- MongoDB with Mongoose
+- Supabase (Database, Authentication, Real-time)
 - TanStack Query for data fetching
+- Google Gemini AI for report generation
 - TypeScript
 - Tailwind CSS
 

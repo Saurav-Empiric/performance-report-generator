@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useEmployeeReports, useEmployees, useGenerateReport } from "@/hooks";
+import { useEmployees, useGenerateReport, useSpecificReport } from "@/hooks";
 import { Employee } from "@/types";
 import { CalendarIcon, Filter, Loader2, Search, Star } from "lucide-react";
 import { useState } from "react";
@@ -47,12 +47,13 @@ export default function ReportsPage() {
   // State for selected employee
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  // Fetch reports for the selected employee
+  // Fetch the specific report for the selected employee and month
   const {
-    data: employeeReports = [],
+    data: selectedMonthReport,
     isLoading: reportsLoading
-  } = useEmployeeReports(
+  } = useSpecificReport(
     selectedEmployee?._id || '',
+    selectedMonth,
     {
       enabled: !!selectedEmployee
     }
@@ -83,9 +84,6 @@ export default function ReportsPage() {
       month: selectedMonth
     });
   };
-
-  // Find the report for the selected month
-  const selectedMonthReport = employeeReports.find(report => report.month === selectedMonth);
 
   // Filter employees based on search query and department
   const filteredEmployees = employees.filter(employee => {
@@ -204,13 +202,6 @@ export default function ReportsPage() {
                       <p className="font-medium truncate">{employee.name}</p>
                       <p className="text-sm text-gray-500 truncate">{employee.role}</p>
                     </div>
-
-                    {employeeReports.some(r => r.employeeId === employee._id) && (
-                      <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                        <Star className="h-3 w-3" />
-                        Reports
-                      </div>
-                    )}
                   </div>
                 ))}
 

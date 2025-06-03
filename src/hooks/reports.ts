@@ -1,4 +1,6 @@
 import queryKeys from '@/constants/QueryKeys';
+import { fetchEmployeeReports, fetchSpecificReport, generateEmployeeReport } from '@/services/report.services';
+import { PerformanceReport } from '@/types';
 import {
     useMutation,
     UseMutationOptions,
@@ -7,60 +9,29 @@ import {
     UseQueryOptions,
 } from '@tanstack/react-query';
 
-interface PerformanceReport {
-    _id?: string;
-    employeeId: string;
-    month: string;
-    ranking: number;
-    improvements: string[];
-    qualities: string[];
-    summary: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-// Fetch reports for an employee
-const fetchEmployeeReports = async (employeeId: string): Promise<PerformanceReport[]> => {
-    const response = await fetch(`/api/reports?employeeId=${employeeId}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch employee reports');
-    }
-    return response.json();
-};
-
-// Generate a report for an employee for a specific month
-const generateEmployeeReport = async ({
-    employeeId,
-    month,
-}: {
-    employeeId: string;
-    month: string;
-}): Promise<PerformanceReport> => {
-    const response = await fetch('/api/reports/generate', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ employeeId, month }),
-    });
-    
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate report');
-    }
-    
-    return response.json();
-};
-
 // Hook to fetch all reports for an employee
 export const useEmployeeReports = (
-    employeeId: string, 
+    employeeId: string,
     options?: Omit<UseQueryOptions<PerformanceReport[]>, 'queryKey' | 'queryFn'>
 ) => {
     return useQuery({
-        queryKey: ['reports', employeeId],
+        queryKey: [queryKeys.reportsByEmployee(employeeId)],
         queryFn: () => fetchEmployeeReports(employeeId),
         enabled: !!employeeId,
+        ...options,
+    });
+};
+
+// Hook to fetch a specific report by employee and month
+export const useSpecificReport = (
+    employeeId: string,
+    month: string,
+    options?: Omit<UseQueryOptions<PerformanceReport | null>, 'queryKey' | 'queryFn'>
+) => {
+    return useQuery({
+        queryKey: [queryKeys.reportByEmployeeAndMonth(employeeId, month)],
+        queryFn: () => fetchSpecificReport(employeeId, month),
+        enabled: !!employeeId && !!month,
         ...options,
     });
 };
@@ -74,12 +45,13 @@ export const useGenerateReport = (
     >
 ) => {
     const queryClient = useQueryClient();
-    
+
     return useMutation({
         mutationFn: generateEmployeeReport,
         onSuccess: (data) => {
-            // Update the reports cache
-            queryClient.invalidateQueries({ queryKey: ['reports', data.employeeId] });
+            // Update both the specific report cache and the all reports cache
+            queryClient.setQueryData([queryKeys.reportByEmployeeAndMonth(data.employeeId, data.month)], data);
+            queryClient.invalidateQueries({ queryKey: [queryKeys.reportsByEmployee(data.employeeId)] });
         },
         ...options,
     });
