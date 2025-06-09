@@ -41,3 +41,56 @@ export const generateEmployeeReport = async ({
     
     return response.json();
 };
+
+// Fetch best employees based on the last three months' ratings
+export const fetchBestEmployees = async (): Promise<{
+    bestEmployees: Array<{
+        employee: {
+            id: string;
+            name: string;
+            role: string;
+            department: string;
+        };
+        avgRating: number;
+        reportsCount: number;
+        missingMonths: string[];
+    }>;
+    months: string[];
+}> => {
+    const response = await fetch('/api/reports/best-employee');
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch best employees');
+    }
+    
+    return response.json();
+};
+
+// Generate missing reports for an employee
+export const generateMissingReports = async ({
+    employeeId,
+    months,
+}: {
+    employeeId: string;
+    months: string[];
+}): Promise<{
+    generatedReports: PerformanceReport[];
+    failedMonths: Array<{ month: string; error: string }>;
+    success: boolean;
+}> => {
+    const response = await fetch('/api/reports/generate-missing', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ employeeId, months }),
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate missing reports');
+    }
+    
+    return response.json();
+};

@@ -13,6 +13,7 @@ const queryKeys = {
     reports: 'reports',
     reportsByEmployee: (employeeId: string) => ['reports', employeeId],
     reportByEmployeeAndMonth: (employeeId: string, month: string) => ['reports', employeeId, month],
+    bestEmployees: 'bestEmployees',
     organization: 'organization',
     departments: 'departments',
     // Auth related query keys
