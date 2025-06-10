@@ -48,6 +48,7 @@ export interface EmployeeWithDepartment {
     name: string;
     role: string;
     department: string;
+    department_id?: string;
 }
 
 export interface BestEmployeeData {
@@ -65,9 +66,18 @@ export interface MissingReportsEmployee {
     missingMonths: string[];
 }
 
+// This interface is replaced by an inline type in BestEmployeeResponse
+
 export interface BestEmployeeResponse {
     hasMissingReports: boolean;
-    bestEmployee?: BestEmployeeData;
+    bestEmployees?: BestEmployeeData[];
+    bestEmployeesByDepartment?: Array<{
+        department: {
+            id: string;
+            name: string;
+        };
+        bestEmployees: BestEmployeeData[];
+    }>;
     employeesWithMissingReports?: MissingReportsEmployee[];
     months: string[];
 }

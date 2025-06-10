@@ -9,10 +9,6 @@ interface Employee {
   department_id: string;
 }
 
-interface Department {
-  id: string;
-  name: string;
-}
 
 interface Report {
   id: string;
@@ -30,6 +26,7 @@ interface EmployeeWithDepartment {
   name: string;
   role: string;
   department: string;
+  department_id?: string;
 }
 
 interface MissingReportsEmployee {
@@ -179,6 +176,7 @@ export async function GET(req: NextRequest) {
             name: employee.name,
             role: employee.role,
             department: department?.name ?? 'Unknown',
+            department_id: employee.department_id
           },
           missingMonths
         });
@@ -194,9 +192,22 @@ export async function GET(req: NextRequest) {
       }, { status: 200 });
     }
 
-    // Calculate average ratings and find the best employee
-    let bestEmployee: BestEmployeeData | null = null;
+    // Calculate average ratings and find the best employees overall
+    const bestEmployees: BestEmployeeData[] = [];
     let bestAvgRating = -1;
+
+    // Create a map to track best employees by department
+    const departmentBestEmployees = new Map<string, BestEmployeeData[]>();
+
+    // Group employees by department for easier access
+    const employeesByDepartment = new Map<string, Employee[]>();
+    employees.forEach(employee => {
+      if (employee.department_id) {
+        const deptEmployees = employeesByDepartment.get(employee.department_id) || [];
+        deptEmployees.push(employee);
+        employeesByDepartment.set(employee.department_id, deptEmployees);
+      }
+    });
 
     employees.forEach(employee => {
       const reports = employeeReportsMap.get(employee.id) || [];
@@ -204,30 +215,78 @@ export async function GET(req: NextRequest) {
         const totalRating = reports.reduce((sum: number, report: Report) => sum + report.ranking, 0);
         const avgRating = totalRating / reports.length;
 
+        const department = departments?.find(dept => dept.id === employee.department_id);
+
+        const employeeData: BestEmployeeData = {
+          employee: {
+            id: employee.id,
+            name: employee.name,
+            role: employee.role,
+            department: department?.name ?? 'Unknown',
+            department_id: employee.department_id
+          },
+          avgRating,
+          reports: reports.map((report: Report) => ({
+            month: report.month,
+            ranking: report.ranking,
+            summary: report.summary
+          }))
+        };
+
+        // Check if this is one of the best overall employees
         if (avgRating > bestAvgRating) {
+          // Found a new highest rating
           bestAvgRating = avgRating;
-          const department = departments?.find(dept => dept.id === employee.department_id);
-          bestEmployee = {
-            employee: {
-              id: employee.id,
-              name: employee.name,
-              role: employee.role,
-              department: department?.name ?? 'Unknown',
-            },
-            avgRating,
-            reports: reports.map((report: Report) => ({
-              month: report.month,
-              ranking: report.ranking,
-              summary: report.summary
-            }))
-          };
+          bestEmployees.length = 0; // Clear previous best employees
+          bestEmployees.push(employeeData);
+        } else if (avgRating === bestAvgRating) {
+          // Another employee with the same highest rating
+          bestEmployees.push(employeeData);
         }
+
+        // Check if this is one of the best employees in their department
+        if (employee.department_id) {
+          const deptBestEmployees = departmentBestEmployees.get(employee.department_id) || [];
+
+          if (deptBestEmployees.length === 0) {
+            // First employee for this department
+            departmentBestEmployees.set(employee.department_id, [employeeData]);
+          } else {
+            const deptBestRating = deptBestEmployees[0].avgRating;
+
+            if (avgRating > deptBestRating) {
+              // New best rating for department
+              departmentBestEmployees.set(employee.department_id, [employeeData]);
+            } else if (avgRating === deptBestRating) {
+              // Tie for best in department
+              deptBestEmployees.push(employeeData);
+              departmentBestEmployees.set(employee.department_id, deptBestEmployees);
+            }
+          }
+        }
+      }
+    });
+
+    // Convert department best employees map to array for the response
+    const bestEmployeesByDepartment: Array<{
+      department: { id: string; name: string };
+      bestEmployees: BestEmployeeData[];
+    }> = [];
+
+    departmentBestEmployees.forEach((deptBestEmployees, deptId) => {
+      const department = departments?.find(d => d.id === deptId);
+      if (department) {
+        bestEmployeesByDepartment.push({
+          department: { id: department.id, name: department.name },
+          bestEmployees: deptBestEmployees
+        });
       }
     });
 
     return NextResponse.json({
       hasMissingReports: false,
-      bestEmployee,
+      bestEmployees,
+      bestEmployeesByDepartment,
       months
     }, { status: 200 });
 
