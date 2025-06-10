@@ -132,7 +132,7 @@ export default function EmployeeLogin() {
             <p className="text-gray-600">
               Are you an organization?{' '}
               <Link
-                href="/organization/login"
+                href="/organization/signin"
                 className="font-medium text-blue-600 hover:text-blue-500"
               >
                 Sign in here

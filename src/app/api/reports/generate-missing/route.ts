@@ -7,27 +7,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { employeeId, months } = body;
 
-    // Validate required fields
-    if (!employeeId || !months || !Array.isArray(months) || months.length === 0) {
+    if (!employeeId) {
       return NextResponse.json(
-        { error: 'Employee ID and months array are required fields' },
+        { error: 'Employee ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    if (!months || !Array.isArray(months) || months.length === 0) {
+      return NextResponse.json(
+        { error: 'Months array is required' },
         { status: 400 }
       );
     }
 
-    // Validate month format
-    const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
-    for (const month of months) {
-      if (!monthRegex.test(month)) {
-        return NextResponse.json(
-          { error: `Invalid month format: ${month}. Use YYYY-MM` },
-          { status: 400 }
-        );
-      }
-    }
-
     const supabase = await createClient();
-
+    
     // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
@@ -38,7 +33,7 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
-
+    
     // Get current user's organization
     const { data: orgData, error: orgError } = await supabase
       .from('organization')
@@ -57,144 +52,147 @@ export async function POST(req: NextRequest) {
     // Get employee details
     const { data: employee, error: empError } = await supabase
       .from('employees')
-      .select('id, name, role, organization_id')
+      .select('id, name, role, department_id, organization_id')
       .eq('id', employeeId)
+      .eq('organization_id', orgData.id)
       .single();
-
+    
     if (empError || !employee) {
       console.error('Error fetching employee:', empError);
       return NextResponse.json(
-        { error: 'Employee not found' },
+        { error: 'Employee not found or does not belong to your organization' },
         { status: 404 }
       );
     }
 
-    // Verify employee belongs to the same organization
-    if (employee.organization_id !== orgData.id) {
-      return NextResponse.json(
-        { error: 'Employee not found in your organization' },
-        { status: 403 }
-      );
-    }
-
+    // Track generated and failed reports
     const generatedReports = [];
     const failedMonths = [];
-
-    // Process each month
+    
+    // Process each month for this employee
     for (const month of months) {
-      // Check if a report already exists for this employee and month
-      const { data: existingReport } = await supabase
-        .from('reports')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .eq('month', month)
-        .single();
-
-      if (existingReport) {
-        // Skip if report already exists
-        generatedReports.push({
-          _id: existingReport.id,
-          employeeId: existingReport.employee_id,
-          month: existingReport.month,
-          ranking: existingReport.ranking,
-          improvements: existingReport.improvements,
-          qualities: existingReport.qualities,
-          summary: existingReport.summary,
-          createdAt: existingReport.created_at,
-          updatedAt: existingReport.created_at
-        });
-        continue;
-      }
-
-      // Get the start and end dates for the month
-      const [year, monthNum] = month.split('-').map(Number);
-      const startDate = new Date(year, monthNum - 1, 1);
-      const endDate = new Date(year, monthNum, 0, 23, 59, 59); // Last day of the month
-
-      // Get reviews for this employee for the specified month
-      const { data: reviews, error: reviewsError } = await supabase
-        .from('reviews')
-        .select('content')
-        .eq('target_employee_id', employeeId)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-      if (reviewsError) {
-        console.error(`Error fetching reviews for ${month}:`, reviewsError);
-        failedMonths.push({ month, error: 'Failed to fetch reviews' });
-        continue;
-      }
-
-      let performanceReport;
-      
-      if (!reviews || reviews.length === 0) {
-        // No reviews found for this month, create a report with 0 rating
-        performanceReport = {
-          ranking: 0,
-          improvements: [],
-          qualities: [],
-          summary: `No reviews available for ${employee.name} in ${month}.`
-        };
-      } else {
-        // Extract review contents
-        const reviewContents = reviews.map(review => review.content);
-
-        // Generate a report using Gemini AI
-        try {
+      try {
+        // Check if report already exists
+        const { data: existingReport } = await supabase
+          .from('reports')
+          .select('id')
+          .eq('employee_id', employeeId)
+          .eq('month', month)
+          .single();
+          
+        if (existingReport) {
+          // Report already exists, get the full data and add to generated reports
+          const { data: fullReport } = await supabase
+            .from('reports')
+            .select('*')
+            .eq('id', existingReport.id)
+            .single();
+            
+          if (fullReport) {
+            generatedReports.push({
+              _id: fullReport.id,
+              employeeId: fullReport.employee_id,
+              month: fullReport.month,
+              ranking: fullReport.ranking,
+              improvements: fullReport.improvements,
+              qualities: fullReport.qualities,
+              summary: fullReport.summary,
+              createdAt: fullReport.created_at,
+              updatedAt: fullReport.created_at
+            });
+          }
+          continue;
+        }
+        
+        // Get the start and end dates for the month
+        const [year, monthNum] = month.split('-').map(Number);
+        const startDate = new Date(year, monthNum - 1, 1);
+        const endDate = new Date(year, monthNum, 0, 23, 59, 59);
+        
+        // Get reviews for this employee for the specified month
+        const { data: reviews } = await supabase
+          .from('reviews')
+          .select('content')
+          .eq('target_employee_id', employeeId)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString());
+        
+        // If no reviews, generate a default report with zero rating
+        let performanceReport;
+        
+        if (!reviews || reviews.length === 0) {
+          // Create a default report with zero rating
+          performanceReport = {
+            ranking: 0, // Zero rating when no reviews
+            improvements: [], // No improvements to note
+            qualities: [], // No qualities to note
+            summary: `No reviews were found for ${employee.name} in ${month}. No performance data available.`
+          };
+        } else {
+          // Extract review contents
+          const reviewContents = reviews.map(review => review.content);
+          
+          // Generate a report using Gemini AI
           performanceReport = await generatePerformanceReport(
             reviewContents,
             employee.name,
             employee.role
           );
-        } catch (error) {
-          console.error(`Error generating report for ${month}:`, error);
-          failedMonths.push({ month, error: 'Failed to generate report' });
-          continue;
         }
+        
+        // Save the report to the database
+        const { data: newReport, error: insertError } = await supabase
+          .from('reports')
+          .insert({
+            employee_id: employeeId,
+            month: month,
+            ranking: performanceReport.ranking,
+            improvements: performanceReport.improvements,
+            qualities: performanceReport.qualities,
+            summary: performanceReport.summary
+          })
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error(`Error saving report for ${month}:`, insertError);
+          failedMonths.push({
+            month,
+            error: insertError.message
+          });
+        } else {
+          generatedReports.push({
+            _id: newReport.id,
+            employeeId: newReport.employee_id,
+            month: newReport.month,
+            ranking: newReport.ranking,
+            improvements: newReport.improvements,
+            qualities: newReport.qualities,
+            summary: newReport.summary,
+            createdAt: newReport.created_at,
+            updatedAt: newReport.created_at
+          });
+        }
+      } catch (error) {
+        console.error(`Error generating report for ${month}:`, error);
+        failedMonths.push({
+          month,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
-
-      // Save the report to the database
-      const { data: newReport, error: insertError } = await supabase
-        .from('reports')
-        .insert({
-          employee_id: employeeId,
-          month: month,
-          ranking: performanceReport.ranking,
-          improvements: performanceReport.improvements,
-          qualities: performanceReport.qualities,
-          summary: performanceReport.summary
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error(`Error saving report for ${month}:`, insertError);
-        failedMonths.push({ month, error: 'Failed to save report' });
-        continue;
-      }
-
-      generatedReports.push({
-        _id: newReport.id,
-        employeeId: newReport.employee_id,
-        month: newReport.month,
-        ranking: newReport.ranking,
-        improvements: newReport.improvements,
-        qualities: newReport.qualities,
-        summary: newReport.summary,
-        createdAt: newReport.created_at,
-        updatedAt: newReport.created_at
-      });
     }
-
+    
+    const success = failedMonths.length === 0;
+    
     return NextResponse.json({
+      success,
       generatedReports,
-      failedMonths,
-      success: generatedReports.length > 0
+      failedMonths
     }, { status: 200 });
+    
   } catch (error) {
-    console.error('Failed to generate reports:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate reports';
-
+    console.error('Failed to generate missing reports:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }

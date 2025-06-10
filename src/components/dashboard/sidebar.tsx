@@ -73,7 +73,7 @@ export function DashboardSidebar({ className }: Readonly<SidebarProps>) {
           <ul className="space-y-1">
             <li>
               <Link href="/organization/dashboard"
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard") ? "bg-gray-100 font-medium" : ""
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/organization/dashboard") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
               >
@@ -83,7 +83,7 @@ export function DashboardSidebar({ className }: Readonly<SidebarProps>) {
             </li>
             <li>
               <Link href="/organization/reports"
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/reports") ? "bg-gray-100 font-medium" : ""
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/organization/reports") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
               >
@@ -93,7 +93,7 @@ export function DashboardSidebar({ className }: Readonly<SidebarProps>) {
             </li>
             <li>
               <Link href="/organization/employees"
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/employees") ? "bg-gray-100 font-medium" : ""
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/organization/employees") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
               >
@@ -103,7 +103,7 @@ export function DashboardSidebar({ className }: Readonly<SidebarProps>) {
             </li>
             <li>
               <Link href="/organization/settings"
-                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/dashboard/organization") ? "bg-gray-100 font-medium" : ""
+                className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${isActive("/organization/settings") ? "bg-gray-100 font-medium" : ""
                   }`}
                 onClick={() => setIsOpen(false)}
               >

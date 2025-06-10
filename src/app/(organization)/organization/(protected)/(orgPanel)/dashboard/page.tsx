@@ -20,14 +20,14 @@ const stats = {
 
 export default function Dashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  const { 
-    data: bestEmployeesData, 
-    isLoading: isLoadingBestEmployees, 
+
+  const {
+    data: bestEmployeeData,
+    isLoading: isLoadingBestEmployees,
     error: bestEmployeesError,
     refetch: refetchBestEmployees
   } = useBestEmployees();
-  
+
   const generateMissingReportsMutation = useGenerateMissingReports({
     onSuccess: (data) => {
       setIsGenerating(false);
@@ -52,31 +52,25 @@ export default function Dashboard() {
 
   // Get all missing reports from all employees
   const getAllMissingReports = () => {
-    if (!bestEmployeesData?.bestEmployees || bestEmployeesData.bestEmployees.length === 0) return [];
-    
-    const allMissing = [];
-    
-    for (const employee of bestEmployeesData.bestEmployees) {
-      if (employee.missingMonths.length > 0) {
-        allMissing.push({
-          employeeId: employee.employee.id,
-          employeeName: employee.employee.name,
-          months: employee.missingMonths
-        });
-      }
+    if (!bestEmployeeData?.employeesWithMissingReports || bestEmployeeData.employeesWithMissingReports.length === 0) {
+      return [];
     }
-    
-    return allMissing;
+
+    return bestEmployeeData.employeesWithMissingReports.map(employeeData => ({
+      employeeId: employeeData.employee.id,
+      employeeName: employeeData.employee.name,
+      months: employeeData.missingMonths
+    }));
   };
-  
+
   const missingReports = getAllMissingReports();
-  const hasMissingReports = missingReports.length > 0;
-  
+  const hasMissingReports = bestEmployeeData?.hasMissingReports || false;
+
   const handleGenerateAllMissingReports = () => {
     if (missingReports.length === 0) return;
-    
+
     setIsGenerating(true);
-    
+
     // Process each employee's missing reports sequentially
     const processNextEmployee = (index = 0) => {
       if (index >= missingReports.length) {
@@ -85,13 +79,13 @@ export default function Dashboard() {
         toast.success("All missing reports generated successfully");
         return;
       }
-      
+
       const { employeeId, employeeName, months } = missingReports[index];
-      
+
       toast.info(`Generating reports for ${employeeName}...`, {
         duration: 2000,
       });
-      
+
       generateMissingReportsMutation.mutate(
         { employeeId, months },
         {
@@ -109,12 +103,12 @@ export default function Dashboard() {
         }
       );
     };
-    
+
     processNextEmployee();
   };
 
-  // Get only the top employee (best employee)
-  const topEmployee = bestEmployeesData?.bestEmployees?.[0];
+  // Get the top employee (best employee)
+  const topEmployee = bestEmployeeData?.bestEmployee;
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
@@ -129,7 +123,7 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold">Performance Dashboard</h1>
         <div className="text-sm text-gray-500">Last updated: {new Date().toLocaleDateString()}</div>
       </div>
-      
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -143,7 +137,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -155,7 +149,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -167,7 +161,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -180,7 +174,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Missing Reports Section */}
       {hasMissingReports ? (
         <Card className="border-amber-200">
@@ -190,8 +184,8 @@ export default function Dashboard() {
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
                 <CardTitle>Missing Performance Reports</CardTitle>
               </div>
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 size="sm"
                 className="bg-amber-600 hover:bg-amber-700"
                 disabled={isGenerating}
@@ -213,7 +207,7 @@ export default function Dashboard() {
                 Generate all missing reports to see who is the best performing employee in your organization.
               </AlertDescription>
             </Alert>
-            
+
             <div className="mt-4 space-y-3">
               {missingReports.map((employee, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 rounded-lg border">
@@ -247,15 +241,15 @@ export default function Dashboard() {
                 </CardTitle>
                 <CardDescription>
                   Based on past three completed months performance ratings
-                  {bestEmployeesData?.months && (
+                  {bestEmployeeData?.months && (
                     <span className="block text-xs mt-1">
-                      Months considered: {bestEmployeesData.months.map(m => formatMonth(m)).join(', ')}
+                      Months considered: {bestEmployeeData.months.map(m => formatMonth(m)).join(', ')}
                     </span>
                   )}
                 </CardDescription>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => refetchBestEmployees()}
               >
@@ -293,7 +287,7 @@ export default function Dashboard() {
                     1
                   </div>
                 </div>
-                
+
                 <div className="flex-1 text-center md:text-left">
                   <h3 className="text-xl font-bold">{topEmployee.employee.name}</h3>
                   <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2 text-gray-600 mt-1">
@@ -301,15 +295,12 @@ export default function Dashboard() {
                     <span className="hidden md:inline">•</span>
                     <span>{topEmployee.employee.department}</span>
                   </div>
-                  
+
                   <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-2">
                     <Badge className="bg-yellow-500 hover:bg-yellow-600">Top Performer</Badge>
-                    <Badge variant="outline" className="border-yellow-300">
-                      {topEmployee.reportsCount}/3 months rated
-                    </Badge>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center justify-center h-20 w-20 bg-yellow-100 text-yellow-800 rounded-full">
                     <div className="text-center">
@@ -328,49 +319,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
-      
-      {/* Activity and Recent Reviews */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest performance reviews and updates</CardDescription>
-            </div>
-            <Activity className="h-5 w-5 text-gray-400" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!hasMissingReports && bestEmployeesData?.bestEmployees && bestEmployeesData.bestEmployees.length > 0 ? (
-            <div className="space-y-4">
-              {bestEmployeesData.bestEmployees.slice(0, 3).map((item, i) => (
-                <div key={i} className="flex gap-3 items-start border-b pb-4 last:border-0 last:pb-0">
-                  <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                    <TrendingUp className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{item.employee.name} received a new review</p>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      Rated {item.avgRating.toFixed(1)}/10 in {item.employee.department}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(Date.now() - 1000 * 60 * 60 * (i + 1) * 2).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">
-                {hasMissingReports 
-                  ? "Generate all missing reports to see recent activity" 
-                  : "No recent activity available"}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
     </div>
   );
 } 

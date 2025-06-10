@@ -1,5 +1,12 @@
 import queryKeys from '@/constants/QueryKeys';
-import { fetchEmployeeReports, fetchSpecificReport, generateEmployeeReport, fetchBestEmployees, generateMissingReports } from '@/services/report.services';
+import { 
+    fetchEmployeeReports, 
+    fetchSpecificReport, 
+    generateEmployeeReport, 
+    fetchBestEmployees, 
+    generateMissingReports,
+    BestEmployeeResponse 
+} from '@/services/report.services';
 import { PerformanceReport } from '@/types';
 import {
     useMutation,
@@ -22,21 +29,21 @@ export const useEmployeeReports = (
     });
 };
 
-// Hook to fetch a specific report by employee and month
+// Hook to fetch a specific report by employee ID and month
 export const useSpecificReport = (
     employeeId: string,
     month: string,
     options?: Omit<UseQueryOptions<PerformanceReport | null>, 'queryKey' | 'queryFn'>
 ) => {
     return useQuery({
-        queryKey: [queryKeys.reportByEmployeeAndMonth(employeeId, month)],
+        queryKey: queryKeys.reportByEmployeeAndMonth(employeeId, month),
         queryFn: () => fetchSpecificReport(employeeId, month),
         enabled: !!employeeId && !!month,
         ...options,
     });
 };
 
-// Hook to generate a report
+// Hook to generate a report for an employee for a specific month
 export const useGenerateReport = (
     options?: UseMutationOptions<
         PerformanceReport,
@@ -48,31 +55,22 @@ export const useGenerateReport = (
 
     return useMutation({
         mutationFn: generateEmployeeReport,
-        onSuccess: (data) => {
-            // Update both the specific report cache and the all reports cache
-            queryClient.setQueryData([queryKeys.reportByEmployeeAndMonth(data.employeeId, data.month)], data);
-            queryClient.invalidateQueries({ queryKey: [queryKeys.reportsByEmployee(data.employeeId)] });
+        onSuccess: (newReport) => {
+            queryClient.invalidateQueries({ 
+                queryKey: [queryKeys.reportsByEmployee(newReport.employeeId)]
+            });
+            queryClient.setQueryData(
+                queryKeys.reportByEmployeeAndMonth(newReport.employeeId, newReport.month),
+                newReport
+            );
         },
         ...options,
     });
 };
 
-// Hook to fetch best employees based on the last three months' ratings
+// Hook to fetch the best employee based on the last 3 months of reports
 export const useBestEmployees = (
-    options?: Omit<UseQueryOptions<{
-        bestEmployees: Array<{
-            employee: {
-                id: string;
-                name: string;
-                role: string;
-                department: string;
-            };
-            avgRating: number;
-            reportsCount: number;
-            missingMonths: string[];
-        }>;
-        months: string[];
-    }>, 'queryKey' | 'queryFn'>
+    options?: Omit<UseQueryOptions<BestEmployeeResponse>, 'queryKey' | 'queryFn'>
 ) => {
     return useQuery({
         queryKey: [queryKeys.bestEmployees],
@@ -81,7 +79,7 @@ export const useBestEmployees = (
     });
 };
 
-// Hook to generate missing reports for an employee
+// Hook to generate missing reports for employees
 export const useGenerateMissingReports = (
     options?: UseMutationOptions<
         {
@@ -97,20 +95,11 @@ export const useGenerateMissingReports = (
 
     return useMutation({
         mutationFn: generateMissingReports,
-        onSuccess: (data, variables) => {
-            // Invalidate the best employees query
+        onSuccess: () => {
+            // Invalidate best employee query after generating missing reports
             queryClient.invalidateQueries({ queryKey: [queryKeys.bestEmployees] });
-            
-            // Invalidate the specific employee's reports
-            queryClient.invalidateQueries({ queryKey: [queryKeys.reportsByEmployee(variables.employeeId)] });
-            
-            // Update the cache for each generated report
-            data.generatedReports.forEach(report => {
-                queryClient.setQueryData(
-                    [queryKeys.reportByEmployeeAndMonth(report.employeeId, report.month)],
-                    report
-                );
-            });
+            // Also invalidate all reports queries
+            queryClient.invalidateQueries({ queryKey: [queryKeys.reports] });
         },
         ...options,
     });

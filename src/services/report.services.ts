@@ -42,26 +42,43 @@ export const generateEmployeeReport = async ({
     return response.json();
 };
 
-// Fetch best employees based on the last three months' ratings
-export const fetchBestEmployees = async (): Promise<{
-    bestEmployees: Array<{
-        employee: {
-            id: string;
-            name: string;
-            role: string;
-            department: string;
-        };
-        avgRating: number;
-        reportsCount: number;
-        missingMonths: string[];
-    }>;
+// Types for the best employee response
+export interface EmployeeWithDepartment {
+    id: string;
+    name: string;
+    role: string;
+    department: string;
+}
+
+export interface BestEmployeeData {
+    employee: EmployeeWithDepartment;
+    avgRating: number;
+    reports: {
+        month: string;
+        ranking: number;
+        summary: string;
+    }[];
+}
+
+export interface MissingReportsEmployee {
+    employee: EmployeeWithDepartment;
+    missingMonths: string[];
+}
+
+export interface BestEmployeeResponse {
+    hasMissingReports: boolean;
+    bestEmployee?: BestEmployeeData;
+    employeesWithMissingReports?: MissingReportsEmployee[];
     months: string[];
-}> => {
+}
+
+// Fetch best employee data based on the last three months' ratings
+export const fetchBestEmployees = async (): Promise<BestEmployeeResponse> => {
     const response = await fetch('/api/reports/best-employee');
     
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch best employees');
+        throw new Error(errorData.error ?? 'Failed to fetch best employee data');
     }
     
     return response.json();
