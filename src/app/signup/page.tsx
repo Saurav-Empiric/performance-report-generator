@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { Loader2 } from 'lucide-react';
 
-export default function EmployeeSignup() {
+function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -176,5 +177,13 @@ export default function EmployeeSignup() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function EmployeeSignup() {
+  return (
+    <Suspense fallback={<Loader2 className="flex items-center justify-center animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"/>}>
+      <SignupForm />
+    </Suspense>
   );
 } 

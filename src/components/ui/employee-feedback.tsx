@@ -161,7 +161,7 @@ export function EmployeeFeedback({
 
       {/* Input Area - Fixed at bottom */}
       <div className="flex flex-col gap-2 border-t bg-white p-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <div className="flex-1">
             <Textarea
               id="review"
