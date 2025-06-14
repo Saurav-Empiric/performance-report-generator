@@ -152,7 +152,7 @@ export default function Home() {
                 disabled={isLoggingOut}
               >
                 <LogOut className={`h-4 w-4 ${isLoggingOut ? 'animate-bounce' : ''}`} />
-                <span className="hidden sm:inline">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </div>
           </div>

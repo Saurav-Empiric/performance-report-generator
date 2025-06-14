@@ -233,7 +233,14 @@ export default function EmployeesPage() {
                               <AvatarFallback>{employee.name[0]}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <h3 className="font-medium">{employee.name}</h3>
+                              <h3 className="font-medium">
+                                <Link 
+                                  href={`/organization/employees/${employee._id}`}
+                                  className="hover:text-primary hover:underline"
+                                >
+                                  {employee.name}
+                                </Link>
+                              </h3>
                               <p className="text-sm text-gray-500">{employee.email}</p>
                               <div className="flex flex-wrap gap-2 mt-2">
                                 <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">
@@ -247,19 +254,30 @@ export default function EmployeesPage() {
                               </div>
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleRemoveEmployee(employee._id)}
-                            disabled={deletingEmployeeId === employee._id}
-                          >
-                            {deletingEmployeeId === employee._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
+                          <div className="absolute top-2 right-2 flex gap-2">
+                            <Link href={`/organization/employees/${employee._id}`}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-gray-400 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <User className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => handleRemoveEmployee(employee._id)}
+                              disabled={deletingEmployeeId === employee._id}
+                            >
+                              {deletingEmployeeId === employee._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>

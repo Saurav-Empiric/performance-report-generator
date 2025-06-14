@@ -8,6 +8,7 @@ export interface Employee {
   assignedReviewees?: string[] | Employee[];
   createdAt?: Date;
   updatedAt?: Date;
+  emailChanged?: boolean;
 }
 
 export interface Review {
