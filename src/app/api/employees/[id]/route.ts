@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // GET a specific employee
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -108,7 +108,7 @@ export async function GET(
 // DELETE an employee
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;

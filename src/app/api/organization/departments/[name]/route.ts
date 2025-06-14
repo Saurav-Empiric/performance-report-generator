@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // DELETE a department
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> }
 ) {
   try {
     const {name} = await params;

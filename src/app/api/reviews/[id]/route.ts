@@ -12,10 +12,10 @@ interface Employee {
 // GET a specific review
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const id = (await params).id;
     
     const supabase = await createClient();
     
@@ -101,10 +101,10 @@ export async function GET(
 // PUT to update a review
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const id = (await params).id;
     const body = await req.json();
     
     const supabase = await createClient();
@@ -265,10 +265,10 @@ export async function PUT(
 // DELETE a review
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const id = (await params).id;
     
     const supabase = await createClient();
     

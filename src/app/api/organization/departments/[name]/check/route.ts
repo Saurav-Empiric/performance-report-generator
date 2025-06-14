@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // Check if a department is used by any employees
 export async function GET(
   req: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> }
 ) {
   try {
     const { name } = await params;

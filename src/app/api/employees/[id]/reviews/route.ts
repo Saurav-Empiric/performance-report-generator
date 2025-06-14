@@ -4,10 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 // GET reviews for a specific employee given by the current authenticated user
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const employeeId = await params.id;
+    const employeeId = (await params).id;
     
     const supabase = await createClient();
     

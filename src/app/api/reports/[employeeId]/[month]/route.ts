@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET specific report for employee and month
 export async function GET(
   req: NextRequest,
-  { params }: { params: { employeeId: string; month: string } }
+  { params }: { params: Promise<{ employeeId: string; month: string }> }
 ) {
   try {
     const { employeeId, month } = await params;
